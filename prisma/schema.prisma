@@ -1,0 +1,67 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model LiveSnapshot {
+  id                    Int      @id @default(autoincrement())
+  collectedAt           DateTime @default(now())
+  liveId                Int
+  liveTitle             String
+  liveThumbnailImageUrl String?
+  concurrentUserCount   Int
+  openDate              String
+  adult                 Boolean
+  tags                  String[]
+  categoryType          String
+  liveCategory          String
+  liveCategoryValue     String
+  channelId             String
+  channelName           String
+  channelImageUrl       String?
+}
+
+model DailySummary {
+  id                Int      @id @default(autoincrement())
+  date              DateTime // 해당 날짜 06:00 기준
+  liveCategory      String
+  liveCategoryValue String
+  totalViewers      Int
+  broadcastCount    Int
+  avgViewers        Int
+
+  @@unique([date, liveCategoryValue])
+}
+
+model StreamerDailySummary {
+  id                Int      @id @default(autoincrement())
+  date              DateTime
+  channelId         String
+  channelName       String
+  channelImageUrl   String?
+  liveCategory      String
+  liveCategoryValue String
+  totalViewers      Int
+  broadcastCount    Int
+  avgViewers        Int
+
+  @@unique([date, channelId, liveCategory])
+  @@index([channelId, date])
+  @@index([date, liveCategory])
+}
+
+model Category {
+  categoryId     String   @id
+  categoryValue  String
+  posterImageUrl String?
+  updatedAt      DateTime @updatedAt
+}

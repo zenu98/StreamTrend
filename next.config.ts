@@ -1,7 +1,25 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  cacheComponents: true,
+  cacheLife: {
+    statsTime: {
+      stale: 300,
+      revalidate: 300,
+      expire: 3600,
+    },
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.chzzk.naver.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**.pstatic.net",
+      },
+    ],
+  },
 };
-
 export default nextConfig;
