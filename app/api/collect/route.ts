@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authHeader = request.headers.get("authorization");
+  if (
+    process.env.NODE_ENV === "production" &&
+    authHeader !== `Bearer ${process.env.CRON_SECRET}`
+  ) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
   let next: string | null = null;
   let totalSaved = 0;
   const allLives: any[] = [];
