@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
+const LCK_CHANNEL_ID = "9381e7d6816e6d915a44a13c0195b202";
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (
@@ -8,6 +10,7 @@ export async function GET(request: Request) {
   ) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
   let next: string | null = null;
   let totalSaved = 0;
   const allLives: any[] = [];
@@ -40,7 +43,11 @@ export async function GET(request: Request) {
         openDate: live.openDate,
         adult: live.adult,
         tags: live.tags,
-        categoryType: live.categoryType ?? "ETC",
+        // LCK 채널은 SPORTS로 분류
+        categoryType:
+          live.channelId === LCK_CHANNEL_ID
+            ? "SPORTS"
+            : (live.categoryType ?? "ETC"),
         liveCategory: live.liveCategory ?? "",
         liveCategoryValue: live.liveCategoryValue ?? "",
         channelId: live.channelId,
@@ -53,16 +60,20 @@ export async function GET(request: Request) {
     if (!next) break;
   }
 
-  // GAME 카테고리만 추출, 중복 제거
+  // GAME 카테고리만 Category 테이블에 저장
   const gameCategories = [
     ...new Map(
       allLives
-        .filter((live) => live.categoryType === "GAME" && live.liveCategory)
+        .filter(
+          (live) =>
+            live.categoryType === "GAME" &&
+            live.liveCategory &&
+            live.channelId !== LCK_CHANNEL_ID,
+        )
         .map((live) => [live.liveCategory, live]),
     ).values(),
   ];
 
-  // Category 테이블에 없는 게임만 필터
   const existingIds = (
     await prisma.category.findMany({
       where: {
@@ -76,7 +87,6 @@ export async function GET(request: Request) {
     (g) => !existingIds.includes(g.liveCategory),
   );
 
-  // 새 게임만 치지직 카테고리 API 호출
   await Promise.all(
     newCategories.map(async (game) => {
       const res = await fetch(

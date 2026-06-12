@@ -1,42 +1,32 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
+import { getPeriodFrom } from "@/lib/stats";
+import { getLives } from "./lives";
 
-export function getPeriodFrom(period: "daily" | "weekly" | "monthly"): Date {
-  const now = new Date();
-  // KST 기준 오늘 00:00 UTC
-  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  kstNow.setUTCHours(0, 0, 0, 0);
-  const todayKSTasUTC = new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
+export async function getWatchpartyLives() {
+  "use cache";
+  cacheLife("statsTime");
 
-  if (period === "daily") {
-    // 어제 하루치 1개
-    const from = new Date(todayKSTasUTC);
-    from.setUTCDate(from.getUTCDate() - 1);
-    return from;
-  }
-  if (period === "weekly") {
-    // 최근 7일
-    const from = new Date(todayKSTasUTC);
-    from.setUTCDate(from.getUTCDate() - 7);
-    return from;
-  }
-  // monthly: 최근 30일
-  const from = new Date(todayKSTasUTC);
-  from.setUTCDate(from.getUTCDate() - 30);
-  return from;
+  const lives = await getLives();
+  return {
+    collectedAt: lives.collectedAt,
+    byViewers: lives.sportsByViewers,
+    byCount: lives.sportsByCount,
+  };
 }
 
-export async function getStats(period: "daily" | "weekly" | "monthly") {
+export async function getWatchpartyStats(
+  period: "daily" | "weekly" | "monthly",
+) {
   "use cache";
   cacheLife("statsTime");
 
   const from = getPeriodFrom(period);
 
   const rows = await prisma.dailySummary.findMany({
-    where: { date: { gte: from }, categoryType: "GAME" },
+    where: { date: { gte: from }, categoryType: "SPORTS" },
   });
 
-  // 게임별 합산
   const categoryMap = new Map<
     string,
     {

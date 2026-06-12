@@ -38,8 +38,9 @@ model DailySummary {
   totalViewers      Int
   broadcastCount    Int
   avgViewers        Int
+  categoryType      String   @default("GAME")
 
-  @@unique([date, liveCategoryValue])
+  @@unique([date, liveCategoryValue, categoryType])
 }
 
 model StreamerDailySummary {
@@ -53,6 +54,7 @@ model StreamerDailySummary {
   totalViewers      Int
   broadcastCount    Int
   avgViewers        Int
+  maxViewers        Int      @default(0)
 
   @@unique([date, channelId, liveCategory])
   @@index([channelId, date])

@@ -19,6 +19,12 @@ export function Header() {
         >
           스트리머
         </Link>
+        <Link
+          href="/watchparty"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          같이보기
+        </Link>
       </nav>
     </header>
   );
