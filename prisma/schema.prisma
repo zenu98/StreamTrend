@@ -39,6 +39,7 @@ model DailySummary {
   broadcastCount    Int
   avgViewers        Int
   categoryType      String   @default("GAME")
+  snapshotCount     Int      @default(0)
 
   @@unique([date, liveCategoryValue, categoryType])
 }

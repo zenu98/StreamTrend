@@ -90,7 +90,7 @@ export async function GET(request: Request) {
   await Promise.all(
     newCategories.map(async (game) => {
       const res = await fetch(
-        `https://openapi.chzzk.naver.com/open/v1/categories/search?query=${encodeURIComponent(game.liveCategory)}&size=5`,
+        `https://openapi.chzzk.naver.com/open/v1/categories/search?query=${encodeURIComponent(game.liveCategoryValue)}&size=20`,
         {
           headers: {
             "Client-Id": process.env.CHZZK_CLIENT_ID!,
@@ -99,9 +99,16 @@ export async function GET(request: Request) {
         },
       );
       const json = await res.json();
+      console.log("검색쿼리:", game.liveCategory);
+      console.log(
+        "검색결과:",
+        json.content?.data?.map((c: any) => c.categoryId),
+      );
       const category = json.content?.data?.find(
         (c: any) => c.categoryId === game.liveCategory,
       );
+
+      console.log("매칭:", category ? "성공" : "실패");
       if (!category) return;
 
       await prisma.category.upsert({
@@ -115,7 +122,8 @@ export async function GET(request: Request) {
       });
     }),
   );
-
+  console.log("newCategoriesAdded:", newCategories.length);
+  console.log("existingIds count:", existingIds.length);
   return Response.json({
     success: true,
     totalSaved,

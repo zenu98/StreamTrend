@@ -3,24 +3,20 @@ import { cacheLife } from "next/cache";
 
 export function getPeriodFrom(period: "daily" | "weekly" | "monthly"): Date {
   const now = new Date();
-  // KST 기준 오늘 00:00 UTC
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   kstNow.setUTCHours(0, 0, 0, 0);
   const todayKSTasUTC = new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
 
   if (period === "daily") {
-    // 어제 하루치 1개
     const from = new Date(todayKSTasUTC);
     from.setUTCDate(from.getUTCDate() - 1);
     return from;
   }
   if (period === "weekly") {
-    // 최근 7일
     const from = new Date(todayKSTasUTC);
     from.setUTCDate(from.getUTCDate() - 7);
     return from;
   }
-  // monthly: 최근 30일
   const from = new Date(todayKSTasUTC);
   from.setUTCDate(from.getUTCDate() - 30);
   return from;
@@ -36,7 +32,6 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
     where: { date: { gte: from }, categoryType: "GAME" },
   });
 
-  // 게임별 합산
   const categoryMap = new Map<
     string,
     {
@@ -44,6 +39,7 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
       liveCategoryValue: string;
       totalViewers: number;
       broadcastCount: number;
+      snapshotCount: number;
     }
   >();
 
@@ -53,24 +49,29 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
       liveCategoryValue: row.liveCategoryValue,
       totalViewers: 0,
       broadcastCount: 0,
+      snapshotCount: 0,
     };
     categoryMap.set(row.liveCategoryValue, {
       ...prev,
       totalViewers: prev.totalViewers + row.totalViewers,
       broadcastCount: prev.broadcastCount + row.broadcastCount,
+      snapshotCount: prev.snapshotCount + row.snapshotCount,
     });
   }
 
   const result = Array.from(categoryMap.values()).map((d) => ({
     category: d.liveCategoryValue,
     totalViewers: d.totalViewers,
-    count: d.broadcastCount,
+    count:
+      d.snapshotCount > 0
+        ? Math.round(d.broadcastCount / d.snapshotCount)
+        : d.broadcastCount,
     avgViewers: Math.round(d.totalViewers / d.broadcastCount),
   }));
 
   return {
     byViewers: [...result]
-      .sort((a, b) => b.totalViewers - a.totalViewers)
+      .sort((a, b) => b.avgViewers - a.avgViewers)
       .slice(0, 10),
     byCount: [...result].sort((a, b) => b.count - a.count).slice(0, 10),
   };
