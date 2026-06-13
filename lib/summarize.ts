@@ -72,6 +72,8 @@ export async function summarizeYesterday(targetDate?: Date) {
         count: number;
       }
     >();
+    const collectedAts = new Set(snaps.map((s) => s.collectedAt.getTime()));
+    const snapshotCount = collectedAts.size;
 
     for (const snap of snaps) {
       if (!snap.liveCategoryValue) continue;
@@ -88,15 +90,39 @@ export async function summarizeYesterday(targetDate?: Date) {
       });
     }
 
-    return Array.from(map.values()).map((d) => ({
-      date: summaryDateUTC,
-      categoryType,
-      liveCategory: d.liveCategory,
-      liveCategoryValue: d.liveCategoryValue,
-      totalViewers: d.totalViewers,
-      broadcastCount: d.count,
-      avgViewers: Math.round(d.totalViewers / d.count),
-    }));
+    return Array.from(map.values()).map((d) => {
+      // 해당 게임의 스냅샷만 필터
+      const gameSnaps = snaps.filter(
+        (s) => s.liveCategoryValue === d.liveCategoryValue,
+      );
+
+      // 수집 시점별 합산 → 최고 동시시청자
+      const timeMap = new Map<number, number>();
+      for (const snap of gameSnaps) {
+        const t = snap.collectedAt.getTime();
+        timeMap.set(t, (timeMap.get(t) ?? 0) + snap.concurrentUserCount);
+      }
+      const maxViewers = timeMap.size > 0 ? Math.max(...timeMap.values()) : 0;
+
+      // 단일 방송 최고 시청자
+      const peakViewers =
+        gameSnaps.length > 0
+          ? Math.max(...gameSnaps.map((s) => s.concurrentUserCount))
+          : 0;
+
+      return {
+        date: summaryDateUTC,
+        categoryType,
+        liveCategory: d.liveCategory,
+        liveCategoryValue: d.liveCategoryValue,
+        totalViewers: d.totalViewers,
+        broadcastCount: d.count,
+        snapshotCount,
+        avgViewers: Math.round(d.totalViewers / d.count),
+        maxViewers,
+        peakViewers,
+      };
+    });
   }
 
   const gameSummaries = aggregateByCategory(gameSnaps, "GAME");

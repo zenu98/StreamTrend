@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "DailySummary" ADD COLUMN     "maxViewers" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "peakViewers" INTEGER NOT NULL DEFAULT 0;

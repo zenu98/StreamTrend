@@ -40,6 +40,8 @@ model DailySummary {
   avgViewers        Int
   categoryType      String   @default("GAME")
   snapshotCount     Int      @default(0)
+  maxViewers        Int      @default(0)
+  peakViewers       Int      @default(0)
 
   @@unique([date, liveCategoryValue, categoryType])
 }
