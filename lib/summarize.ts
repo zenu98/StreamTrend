@@ -42,7 +42,7 @@ export async function summarizeYesterday(targetDate?: Date) {
   const snapshots = await prisma.liveSnapshot.findMany({
     where: {
       collectedAt: { gte: from, lt: to },
-      categoryType: { in: ["GAME", "SPORTS"] },
+      categoryType: { in: ["GAME", "SPORTS", "ETC"] },
     },
   });
 
@@ -60,6 +60,14 @@ export async function summarizeYesterday(targetDate?: Date) {
       s.categoryType === "SPORTS" ||
       s.channelId === LCK_CHANNEL_ID ||
       s.liveTitle.toLowerCase().includes("watchparty"),
+  );
+
+  const talkSnaps = snapshots.filter(
+    (s) =>
+      s.categoryType === "ETC" &&
+      s.liveCategory === "talk" &&
+      s.channelId !== LCK_CHANNEL_ID &&
+      !s.liveTitle.toLowerCase().includes("watchparty"),
   );
 
   function aggregateByCategory(snaps: typeof snapshots, categoryType: string) {
@@ -128,7 +136,7 @@ export async function summarizeYesterday(targetDate?: Date) {
   const summaries = [...gameSummaries, ...sportsSummaries];
 
   // 스트리머별 집계
-  const allSnaps = [...gameSnaps, ...sportsSnaps];
+  const allSnaps = [...gameSnaps, ...sportsSnaps, ...talkSnaps];
   const streamerMap = new Map<
     string,
     {

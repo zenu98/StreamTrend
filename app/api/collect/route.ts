@@ -76,6 +76,32 @@ export async function GET(request: Request) {
     ).values(),
   ];
 
+  // 스트리머 upsert (전체 방송 스트리머)
+  const streamers = [
+    ...new Map(
+      allLives
+        .filter((live) => live.channelId && live.channelName)
+        .map((live) => [live.channelId, live]),
+    ).values(),
+  ];
+
+  await Promise.all(
+    streamers.map((live) =>
+      prisma.streamer.upsert({
+        where: { channelId: live.channelId },
+        update: {
+          channelName: live.channelName,
+          channelImageUrl: live.channelImageUrl ?? null,
+        },
+        create: {
+          channelId: live.channelId,
+          channelName: live.channelName,
+          channelImageUrl: live.channelImageUrl ?? null,
+        },
+      }),
+    ),
+  );
+
   const existingIds = (
     await prisma.category.findMany({
       where: {

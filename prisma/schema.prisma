@@ -71,3 +71,10 @@ model Category {
   posterImageUrl String?
   updatedAt      DateTime @updatedAt
 }
+
+model Streamer {
+  channelId       String   @id
+  channelName     String
+  channelImageUrl String?
+  updatedAt       DateTime @updatedAt
+}
