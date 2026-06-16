@@ -17,16 +17,8 @@ export async function getGameCategories() {
     categories.map((c) => [c.categoryId, c.posterImageUrl]),
   );
 
-  return lives.allGames.map((game) => {
-    console.log(
-      "game.categoryId:",
-      game.categoryId,
-      "posterUrl:",
-      posterMap.get(game.categoryId),
-    );
-    return {
-      ...game,
-      posterImageUrl: posterMap.get(game.categoryId) ?? null,
-    };
-  });
+  return lives.allGames.map((game) => ({
+    ...game,
+    posterImageUrl: posterMap.get(game.categoryId) ?? null,
+  }));
 }

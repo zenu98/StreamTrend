@@ -1,21 +1,33 @@
 import { getGameCategories } from "@/lib/games";
 import Image from "next/image";
 import Link from "next/link";
+import { Info } from "lucide-react";
 
 export default async function GamesPage() {
   const games = await getGameCategories();
 
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-bold mb-6">게임 카테고리</h1>
+      <div className="w-full border border-gray-100 rounded-lg p-4 bg-muted/50 text-sm space-y-2">
+        <div className="font-semibold flex items-center text-muted-foreground gap-1">
+          <Info className="w-4 h-4" />
+          <div>수치 안내</div>
+        </div>
+        <p className="text-muted-foreground">
+          동시시청자 순 상위 2,000개 방송 기준으로 수집되므로, 하위 방송은
+          집계에서 제외됩니다. 이로 인해 시청자 수와 방송 수가 치지직 공식
+          수치와 오차가 있을 수 있습니다.
+        </p>
+      </div>
+      <h1 className="text-2xl font-bold my-6">게임 카테고리</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {games.map((game) => (
           <Link
             key={game.category}
             href={`/games/${encodeURIComponent(game.categoryId)}`}
-            className="group flex flex-col rounded-lg overflow-hidden border bg-card hover:border-primary transition-colors"
+            className="group flex flex-col rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
           >
-            <div className="relative aspect-[3/4] bg-muted">
+            <div className="relative aspect-[3/4] bg-muted rounded-lg overflow-hidden">
               {game.posterImageUrl ? (
                 <Image
                   src={game.posterImageUrl}
@@ -29,16 +41,22 @@ export default async function GamesPage() {
                   {game.category}
                 </div>
               )}
+              {/* 시청자수 배지 */}
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/80 rounded-full px-2 py-0.5 ">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 " />
+                <div className="text-white text-xs font-bold">
+                  {game.totalViewers >= 10000
+                    ? `${(game.totalViewers / 10000).toFixed(1)}만명`
+                    : game.totalViewers.toLocaleString()}
+                </div>
+              </div>
             </div>
-            <div className="p-2 space-y-1">
+            <div className="pt-2 space-y-0.5">
               <p className="text-sm font-medium line-clamp-1">
                 {game.category}
               </p>
               <p className="text-xs text-muted-foreground">
-                👁 {game.totalViewers.toLocaleString()}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                📺 {game.count}개 방송
+                라이브 {game.count}개
               </p>
             </div>
           </Link>

@@ -36,7 +36,7 @@ export const COLORS = [
 
 export function buildChartData(
   data: CategoryData[],
-  dataKey: "totalViewers" | "count",
+  dataKey: "totalViewers" | "count" | "avgViewers",
 ) {
   return [...data]
     .sort((a, b) => b[dataKey] - a[dataKey]) // dataKey 기준 정렬 추가

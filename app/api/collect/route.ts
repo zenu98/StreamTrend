@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   let next: string | null = null;
   let totalSaved = 0;
   const allLives: any[] = [];
+  const collectedAt = new Date();
 
   for (let i = 0; i < 100; i++) {
     const url = new URL("https://openapi.chzzk.naver.com/open/v1/lives");
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
         channelId: live.channelId,
         channelName: live.channelName,
         channelImageUrl: live.channelImageUrl,
+        collectedAt,
       })),
     });
 

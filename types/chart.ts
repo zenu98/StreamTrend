@@ -9,6 +9,6 @@ export type ChartProps = {
   title: string;
   description: string;
   data: CategoryData[];
-  dataKey: "totalViewers" | "count";
+  dataKey: "totalViewers" | "count" | "avgViewers";
   valueLabel?: string;
 };

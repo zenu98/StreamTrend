@@ -41,8 +41,11 @@ export async function getGameStats(categoryId: string) {
       date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
         .toISOString()
         .slice(5, 10), // MM-DD
-      totalViewers: r.totalViewers,
-      broadcastCount: r.broadcastCount,
+      totalViewers: r.avgViewers,
+      broadcastCount:
+        r.snapshotCount > 0
+          ? Math.round(r.broadcastCount / r.snapshotCount)
+          : r.broadcastCount,
     }));
 
   // 월간: 최근 30일
