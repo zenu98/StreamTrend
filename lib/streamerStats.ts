@@ -16,7 +16,6 @@ export async function getStreamerStats(channelId: string) {
     where: {
       channelId,
       collectedAt: { gte: todayFrom },
-      categoryType: "GAME",
     },
     orderBy: { collectedAt: "asc" },
   });
@@ -66,10 +65,9 @@ export async function getStreamerStats(channelId: string) {
       where: { channelId, date: { gte: from30 } },
       orderBy: { date: "asc" },
     }),
-    prisma.streamerDailySummary.findFirst({
+    prisma.streamer.findUnique({
       where: { channelId },
       select: { channelName: true, channelImageUrl: true },
-      orderBy: { date: "desc" },
     }),
   ]);
 

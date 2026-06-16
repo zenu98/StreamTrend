@@ -157,7 +157,9 @@ export async function summarizeYesterday(targetDate?: Date) {
       snap.channelId === LCK_CHANNEL_ID ||
       snap.liveTitle.toLowerCase().includes("watchparty")
         ? "SPORTS"
-        : snap.categoryType;
+        : snap.liveCategory === "talk"
+          ? "TALK"
+          : snap.categoryType;
 
     const key = `${snap.channelId}__${snap.liveCategory}`;
     const prev = streamerMap.get(key) ?? {
