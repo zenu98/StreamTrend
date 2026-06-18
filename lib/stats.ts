@@ -67,7 +67,8 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
         ? Math.round(d.broadcastCount / d.snapshotCount)
         : d.broadcastCount,
     avgViewers: Math.round(d.totalViewers / d.broadcastCount),
-    concurrentViewers: Math.round(d.totalViewers / d.snapshotCount),
+    concurrentViewers:
+      d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
   }));
 
   return {
