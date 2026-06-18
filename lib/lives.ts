@@ -74,6 +74,7 @@ export async function getLives() {
       categoryId: data.categoryId,
       count: data.count,
       totalViewers: data.totalViewers,
+      concurrentViewers: data.totalViewers,
       avgViewers: Math.round(data.totalViewers / data.count),
       posterImageUrl: null as string | null,
     }));
