@@ -34,6 +34,7 @@ export async function getWatchpartyStats(
       liveCategoryValue: string;
       totalViewers: number;
       broadcastCount: number;
+      snapshotCount: number;
     }
   >();
 
@@ -43,11 +44,13 @@ export async function getWatchpartyStats(
       liveCategoryValue: row.liveCategoryValue,
       totalViewers: 0,
       broadcastCount: 0,
+      snapshotCount: 0,
     };
     categoryMap.set(row.liveCategoryValue, {
       ...prev,
       totalViewers: prev.totalViewers + row.totalViewers,
       broadcastCount: prev.broadcastCount + row.broadcastCount,
+      snapshotCount: prev.snapshotCount + row.snapshotCount,
     });
   }
 
@@ -56,6 +59,8 @@ export async function getWatchpartyStats(
     totalViewers: d.totalViewers,
     count: d.broadcastCount,
     avgViewers: Math.round(d.totalViewers / d.broadcastCount),
+    concurrentViewers:
+      d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
   }));
 
   return {
