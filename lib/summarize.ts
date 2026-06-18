@@ -149,6 +149,7 @@ export async function summarizeYesterday(targetDate?: Date) {
       maxViewers: number;
       totalViewers: number;
       count: number;
+      titleCount: Map<string, number>;
     }
   >();
 
@@ -172,28 +173,39 @@ export async function summarizeYesterday(targetDate?: Date) {
       maxViewers: 0,
       totalViewers: 0,
       count: 0,
+      titleCount: new Map<string, number>(),
     };
+    const titleCount = prev.titleCount;
+    titleCount.set(snap.liveTitle, (titleCount.get(snap.liveTitle) ?? 0) + 1);
+
     streamerMap.set(key, {
       ...prev,
       maxViewers: Math.max(prev.maxViewers, snap.concurrentUserCount),
       totalViewers: prev.totalViewers + snap.concurrentUserCount,
       count: prev.count + 1,
+      titleCount,
     });
   }
 
-  const streamerSummaries = Array.from(streamerMap.values()).map((d) => ({
-    date: summaryDateUTC,
-    categoryType: d.categoryType,
-    channelId: d.channelId,
-    channelName: d.channelName,
-    channelImageUrl: d.channelImageUrl,
-    liveCategory: d.liveCategory,
-    liveCategoryValue: d.liveCategoryValue,
-    totalViewers: d.totalViewers,
-    maxViewers: d.maxViewers,
-    broadcastCount: d.count,
-    avgViewers: Math.round(d.totalViewers / d.count),
-  }));
+  const streamerSummaries = Array.from(streamerMap.values()).map((d) => {
+    const liveTitle =
+      [...d.titleCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+
+    return {
+      date: summaryDateUTC,
+      categoryType: d.categoryType,
+      channelId: d.channelId,
+      channelName: d.channelName,
+      channelImageUrl: d.channelImageUrl,
+      liveCategory: d.liveCategory,
+      liveCategoryValue: d.liveCategoryValue,
+      totalViewers: d.totalViewers,
+      maxViewers: d.maxViewers,
+      broadcastCount: d.count,
+      avgViewers: Math.round(d.totalViewers / d.count),
+      liveTitle,
+    };
+  });
 
   await prisma.$transaction([
     prisma.dailySummary.createMany({ data: summaries }),

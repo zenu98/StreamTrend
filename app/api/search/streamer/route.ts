@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   // 검색어로 스트리머 찾기
-  const rows = await prisma.streamerDailySummary.findMany({
+  const rows = await prisma.streamer.findMany({
     where: {
       channelName: { contains: query, mode: "insensitive" },
     },

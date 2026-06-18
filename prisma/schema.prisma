@@ -59,6 +59,7 @@ model StreamerDailySummary {
   broadcastCount    Int
   avgViewers        Int
   maxViewers        Int      @default(0)
+  liveTitle         String   @default("")
 
   @@unique([date, channelId, liveCategory, categoryType])
   @@index([channelId, date])

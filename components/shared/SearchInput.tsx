@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type Props<T> = {
   placeholder?: string;
@@ -19,40 +20,70 @@ export function SearchInput<T>({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const debouncedQuery = useDebounce(query, 300);
 
-  async function handleSearch(value: string) {
-    setQuery(value);
-    if (!value.trim()) {
-      setResults([]);
-      return;
-    }
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (!trimmed) return;
 
-    setLoading(true);
-    const res = await fetch(fetchUrl(value));
-    const data = await res.json();
-    setResults(data.results);
-    setLoading(false);
-  }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const run = async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const res = await fetch(fetchUrl(trimmed), {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json();
+        setResults(data.results ?? []);
+      } catch (e: unknown) {
+        if (e instanceof Error && e.name !== "AbortError") {
+          setError(true);
+          setResults([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    run();
+
+    return () => controller.abort();
+  }, [debouncedQuery, fetchUrl]);
+
+  const displayResults = debouncedQuery.trim() ? results : [];
+  const isEmpty =
+    !loading &&
+    !error &&
+    displayResults.length === 0 &&
+    !!debouncedQuery.trim();
 
   return (
     <div className="space-y-4 max-w-xl">
       <Input
         placeholder={placeholder}
         value={query}
-        onChange={(e) => handleSearch(e.target.value)}
+        onChange={(e) => setQuery(e.target.value)}
       />
-
       {loading && <p className="text-sm text-muted-foreground">검색 중...</p>}
-
-      {!loading && results.length === 0 && query.trim() && (
+      {error && (
+        <p className="text-sm text-destructive">검색 중 오류가 발생했습니다.</p>
+      )}
+      {isEmpty && (
         <p className="text-sm text-muted-foreground">검색 결과 없음</p>
       )}
-
-      <div className="space-y-2">
-        {results.map((item) => (
-          <div key={getKey(item)}>{renderResult(item)}</div>
-        ))}
-      </div>
+      {!loading && displayResults.length > 0 && (
+        <div className="space-y-2">
+          {displayResults.map((item) => (
+            <div key={getKey(item)}>{renderResult(item)}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

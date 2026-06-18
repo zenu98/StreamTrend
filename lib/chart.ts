@@ -36,7 +36,7 @@ export const COLORS = [
 
 export function buildChartData(
   data: CategoryData[],
-  dataKey: "totalViewers" | "count" | "avgViewers",
+  dataKey: "totalViewers" | "count" | "avgViewers" | "concurrentViewers",
 ) {
   return [...data]
     .sort((a, b) => b[dataKey] - a[dataKey]) // dataKey 기준 정렬 추가
@@ -55,4 +55,11 @@ export function buildChartConfig(data: CategoryData[]): ChartConfig {
     };
     return acc;
   }, {} as ChartConfig);
+}
+
+export function getTier(maxViewers: number) {
+  if (maxViewers >= 100000) return "S";
+  if (maxViewers >= 50000) return "A";
+  if (maxViewers >= 10000) return "B";
+  return "C";
 }

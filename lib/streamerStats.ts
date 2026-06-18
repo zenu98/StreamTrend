@@ -44,6 +44,7 @@ export async function getStreamerStats(channelId: string) {
       totalViewers: d.totalViewers,
       count: d.broadcastCount,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
+      concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -113,6 +114,7 @@ export async function getStreamerStats(channelId: string) {
       totalViewers: d.totalViewers,
       count: d.broadcastCount,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
+      concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
 
@@ -122,6 +124,7 @@ export async function getStreamerStats(channelId: string) {
       totalViewers: d.totalViewers,
       count: d.broadcastCount,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
+      concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
 

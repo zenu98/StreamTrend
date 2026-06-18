@@ -33,8 +33,8 @@ export default async function Home() {
               <ChartBarMixed
                 title="시청자 수"
                 description="카테고리별 시청자 수"
-                data={data.byViewers}
-                dataKey="totalViewers"
+                data={data.byConcurrentViewers}
+                dataKey="concurrentViewers"
               />
               <ChartBarMixed
                 title="방송 수"

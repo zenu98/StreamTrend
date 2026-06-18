@@ -14,21 +14,25 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { TimeSeriesChartProps } from "@/types/chart";
 
 const chartConfig = {
   value: { label: "값", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
-type Props = {
-  title: string;
-  description: string;
-  data: { date: string; totalViewers: number; broadcastCount: number }[];
-  dataKey: "totalViewers" | "broadcastCount";
-};
-
-export function ChartLineLabel({ title, description, data, dataKey }: Props) {
+export function ChartLineLabel({
+  title,
+  description,
+  data,
+  dataKey,
+}: TimeSeriesChartProps) {
   const chartData = data.map((d) => ({ date: d.date, value: d[dataKey] }));
-  const valueLabel = dataKey === "totalViewers" ? "시청자" : "방송 수";
+  const valueLabel =
+    dataKey === "totalViewers"
+      ? "시청자"
+      : dataKey === "concurrentViewers"
+        ? " 명"
+        : " 개";
 
   return (
     <Card>

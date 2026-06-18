@@ -122,5 +122,6 @@ export async function getLives() {
     sportsByCount: [...sportsResult]
       .sort((a, b) => b.count - a.count)
       .slice(0, 13),
+    allGamesRaw: gameFiltered,
   };
 }
