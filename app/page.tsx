@@ -20,7 +20,7 @@ export default async function Home() {
 
       <LiveSection />
 
-      {/* 일간 / 주간 / 월간 */}
+      {/* 일간 / 주간 / 월간
       <section>
         <div className="grid grid-cols-2 gap-4">
           {[
@@ -45,7 +45,7 @@ export default async function Home() {
             </div>
           ))}
         </div>
-      </section>
+      </section> */}
     </main>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, XAxis, YAxis, LabelList } from "recharts";
 import {
   Card,
   CardContent,
@@ -12,17 +12,25 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { ChartProps } from "@/types/chart";
+import { BaseCategoryData } from "@/types/chart";
 import { buildChartConfig, buildChartData } from "@/lib/chart";
 
-export function ChartBarMixed({
+type Props<T extends BaseCategoryData> = {
+  title: string;
+  description: string;
+  data: T[];
+  dataKey: keyof T;
+  valueLabel?: string;
+};
+
+export function ChartBarMixed<T extends BaseCategoryData>({
   title,
   description,
   data,
   dataKey,
   valueLabel = "value",
-}: ChartProps) {
-  const chartData = buildChartData(data, dataKey);
+}: Props<T>) {
+  const chartData = buildChartData(data, dataKey as keyof BaseCategoryData);
   const chartConfig = {
     ...buildChartConfig(data),
     value: { label: valueLabel },
@@ -77,17 +85,40 @@ export function ChartBarMixed({
                   }
                 </text>
               )}
-              //   tickFormatter={(value) =>
-              //     chartConfig[value as keyof typeof chartConfig]?.label as string
-              //   }
             />
-
             <XAxis dataKey="value" type="number" />
             <ChartTooltip
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="value" radius={5} />
+            <Bar dataKey="value" radius={5}>
+              <LabelList
+                dataKey="value"
+                content={({ x, y, width, height, value }) => {
+                  const numValue = typeof value === "number" ? value : 0;
+                  const text = numValue.toLocaleString();
+                  const textWidth = text.length * 7; // 글자당 약 7px
+                  const insideRight = (width as number) > textWidth + 16;
+
+                  return (
+                    <text
+                      x={
+                        (x as number) +
+                        (width as number) +
+                        (insideRight ? -8 : 8)
+                      }
+                      y={(y as number) + (height as number) / 1.9}
+                      textAnchor={insideRight ? "end" : "start"}
+                      dominantBaseline="middle"
+                      fontSize={12}
+                      fill={insideRight ? "white" : "#767676"}
+                    >
+                      {text}
+                    </text>
+                  );
+                }}
+              />
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>

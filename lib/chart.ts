@@ -1,5 +1,5 @@
 import type { ChartConfig } from "@/components/ui/chart";
-import type { CategoryData } from "@/types/chart";
+import type { BaseCategoryData } from "@/types/chart";
 
 export const COLORS = [
   "var(--chart-1)",
@@ -34,20 +34,20 @@ export const COLORS = [
   "var(--chart-30)",
 ];
 
-export function buildChartData(
-  data: CategoryData[],
-  dataKey: "totalViewers" | "count" | "avgViewers" | "concurrentViewers",
+export function buildChartData<T extends BaseCategoryData>(
+  data: T[],
+  dataKey: keyof T,
 ) {
-  return [...data]
-    .sort((a, b) => b[dataKey] - a[dataKey]) // dataKey 기준 정렬 추가
-    .map((item, index) => ({
-      category: item.category,
-      value: item[dataKey],
-      fill: COLORS[index % COLORS.length],
-    }));
+  return [...data].map((item, index) => ({
+    category: item.category,
+    value: (item[dataKey] as number) ?? 0,
+    fill: COLORS[index % COLORS.length],
+  }));
 }
 
-export function buildChartConfig(data: CategoryData[]): ChartConfig {
+export function buildChartConfig<T extends BaseCategoryData>(
+  data: T[],
+): ChartConfig {
   return data.reduce((acc, item, index) => {
     acc[item.category] = {
       label: item.category,

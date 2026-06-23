@@ -8,6 +8,12 @@ export function Header() {
       </Link>
       <nav className="flex items-center gap-6">
         <Link
+          href="/stats"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          통계
+        </Link>
+        <Link
           href="/games"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >

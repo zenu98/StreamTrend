@@ -1,19 +1,37 @@
-export type CategoryData = {
+// 공통 기본 타입
+export type BaseCategoryData = {
   category: string;
   count: number;
   totalViewers: number;
   avgViewers: number;
   concurrentViewers: number;
+  posterImageUrl?: string | null;
 };
 
-export type ChartProps = {
+// 통계 페이지용
+export type StatsCategoryData = BaseCategoryData & {
+  maxViewers: number;
+  peakViewers: number;
+};
+
+// 차트 Props
+export type BaseChartProps = {
   title: string;
   description: string;
-  data: CategoryData[];
-  dataKey: "totalViewers" | "count" | "avgViewers" | "concurrentViewers";
   valueLabel?: string;
 };
 
+export type ChartProps = BaseChartProps & {
+  data: BaseCategoryData[];
+  dataKey: keyof BaseCategoryData;
+};
+
+export type StatsChartProps = BaseChartProps & {
+  data: StatsCategoryData[];
+  dataKey: keyof StatsCategoryData;
+};
+
+// 시계열 차트용
 export type TimeSeriesData = {
   date: string;
   totalViewers: number;
@@ -25,5 +43,5 @@ export type TimeSeriesChartProps = {
   title: string;
   description: string;
   data: TimeSeriesData[];
-  dataKey: "totalViewers" | "broadcastCount" | "concurrentViewers";
+  dataKey: keyof TimeSeriesData;
 };
