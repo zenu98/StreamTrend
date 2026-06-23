@@ -7,6 +7,7 @@ export async function LiveSection() {
     <section className="space-y-4">
       <p className="text-sm text-muted-foreground">
         {new Date(lives.collectedAt).toLocaleString("ko-KR", {
+          timeZone: "Asia/Seoul",
           year: "numeric",
           month: "2-digit",
           day: "2-digit",
