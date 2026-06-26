@@ -1,9 +1,14 @@
 import { Suspense } from "react";
-import { getGameCategoryInfo, getGameStats } from "@/lib/gameStats";
+import {
+  getGameCategoryInfo,
+  getGameLiveStats,
+  getGameStats,
+} from "@/lib/gameStats";
 import Image from "next/image";
 import { ChartLineLabel } from "@/components/ui/charts/chart-line-label";
 import { ChartRadialText } from "@/components/ui/charts/chart-radial-text";
 import Link from "next/link";
+import { getLives } from "@/lib/lives";
 
 export default function GameDetailPage({
   params,
@@ -27,8 +32,9 @@ async function GameDetail({
   const { category } = await paramsPromise;
   const categoryId = decodeURIComponent(category);
 
-  const [stats, categoryInfo] = await Promise.all([
+  const [stats, liveStats, categoryInfo] = await Promise.all([
     getGameStats(categoryId),
+    getGameLiveStats(categoryId),
     getGameCategoryInfo(categoryId),
   ]);
 
@@ -37,7 +43,7 @@ async function GameDetail({
       {/* 헤더 */}
       <div className="flex items-center gap-4 md:gap-6">
         {categoryInfo?.posterImageUrl && (
-          <div className="relative w-16 h-24 md:w-24 md:h-32 rounded-lg overflow-hidden flex-shrink-0">
+          <div className="relative aspect-[3/4] w-32 md:w-48 rounded-lg overflow-hidden shrink-0">
             <Image
               src={categoryInfo.posterImageUrl}
               alt={categoryInfo.categoryValue}
@@ -47,8 +53,11 @@ async function GameDetail({
             />
           </div>
         )}
-        <h1 className="text-2xl md:text-3xl font-bold">
-          {categoryInfo?.categoryValue}
+        <h1 className="flex-col text-2xl md:text-3xl font-bold">
+          <p>{categoryInfo?.categoryValue}</p>
+          <p className="text-xl font-normal text-muted-foreground">
+            {categoryInfo?.categoryId.replace(/_/g, " ")}
+          </p>
         </h1>
       </div>
 
@@ -58,36 +67,36 @@ async function GameDetail({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <ChartRadialText
             title="현재 시청자"
-            value={stats.currentViewers}
+            value={liveStats.currentViewers}
             label="명"
-            tier={stats.viewerTier}
+            tier={liveStats.viewerTier}
           />
           <ChartRadialText
             title="현재 방송 수"
-            value={stats.currentCount}
+            value={liveStats.currentCount}
             label="개"
-            tier={stats.countTier}
+            tier={liveStats.countTier}
           />
-          {stats.currentMaxViewer && (
-            <Link href={`/streamers/${stats.currentMaxViewer.channelId}`}>
+          {liveStats.currentMaxViewer && (
+            <Link href={`/streamers/${liveStats.currentMaxViewer.channelId}`}>
               <div className="flex flex-col items-center justify-center gap-2 p-4 h-full rounded-lg border bg-card hover:border-primary transition-colors">
                 <p className="text-sm text-muted-foreground">
                   현재 최고 시청자
                 </p>
-                {stats.currentMaxViewer.channelImageUrl && (
+                {liveStats.currentMaxViewer.channelImageUrl && (
                   <Image
-                    src={stats.currentMaxViewer.channelImageUrl}
-                    alt={stats.currentMaxViewer.channelName}
+                    src={liveStats.currentMaxViewer.channelImageUrl}
+                    alt={liveStats.currentMaxViewer.channelName}
                     width={48}
                     height={48}
                     className="rounded-full object-cover"
                   />
                 )}
                 <p className="text-sm font-bold">
-                  {stats.currentMaxViewer.channelName}
+                  {liveStats.currentMaxViewer.channelName}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {stats.currentMaxViewer.concurrentUserCount.toLocaleString()}
+                  {liveStats.currentMaxViewer.concurrentUserCount.toLocaleString()}
                   명
                 </p>
               </div>
@@ -103,7 +112,7 @@ async function GameDetail({
           <ChartRadialText
             title="역대 최고 동시시청자"
             value={stats.maxViewers}
-            tier={stats.viewerTier}
+            tier={liveStats.viewerTier}
           />
           {stats.allTimeTopStreamer && (
             <Link href={`/streamers/${stats.allTimeTopStreamer.channelId}`}>

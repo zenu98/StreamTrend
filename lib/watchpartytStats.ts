@@ -58,6 +58,7 @@ export async function getWatchpartyStats(
     category: d.liveCategoryValue,
     totalViewers: d.totalViewers,
     count: d.broadcastCount,
+    categoryId: d.liveCategory,
     avgViewers: Math.round(d.totalViewers / d.broadcastCount),
     concurrentViewers:
       d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,

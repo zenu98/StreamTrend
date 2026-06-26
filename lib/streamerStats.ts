@@ -23,11 +23,17 @@ export async function getStreamerStats(channelId: string) {
   // 게임별 합산
   const mapToday = new Map<
     string,
-    { liveCategoryValue: string; totalViewers: number; broadcastCount: number }
+    {
+      liveCategoryValue: string;
+      totalViewers: number;
+      broadcastCount: number;
+      liveCategory: string;
+    }
   >();
   for (const snap of todaySnapshots) {
-    const prev = mapToday.get(snap.liveCategory) ?? {
-      liveCategoryValue: snap.liveCategoryValue,
+    const prev = mapToday.get(snap.liveCategory || "unknown") ?? {
+      liveCategoryValue: snap.liveCategoryValue || "카테고리 없음",
+      liveCategory: snap.liveCategory || "unknown",
       totalViewers: 0,
       broadcastCount: 0,
     };
@@ -35,6 +41,7 @@ export async function getStreamerStats(channelId: string) {
       ...prev,
       totalViewers: prev.totalViewers + snap.concurrentUserCount,
       broadcastCount: prev.broadcastCount + 1,
+      liveCategory: snap.liveCategory,
     });
   }
 
@@ -45,6 +52,7 @@ export async function getStreamerStats(channelId: string) {
       count: d.broadcastCount,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
       concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
+      categoryId: d.liveCategory,
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -75,11 +83,17 @@ export async function getStreamerStats(channelId: string) {
   // 7일: 게임별 합산
   const map7 = new Map<
     string,
-    { liveCategoryValue: string; totalViewers: number; broadcastCount: number }
+    {
+      liveCategoryValue: string;
+      totalViewers: number;
+      broadcastCount: number;
+      liveCategory: string;
+    }
   >();
   for (const row of rows7) {
     const prev = map7.get(row.liveCategory) ?? {
       liveCategoryValue: row.liveCategoryValue,
+      liveCategory: row.liveCategory,
       totalViewers: 0,
       broadcastCount: 0,
     };
@@ -93,11 +107,17 @@ export async function getStreamerStats(channelId: string) {
   // 30일: 게임별 합산
   const map30 = new Map<
     string,
-    { liveCategoryValue: string; totalViewers: number; broadcastCount: number }
+    {
+      liveCategoryValue: string;
+      totalViewers: number;
+      broadcastCount: number;
+      liveCategory: string;
+    }
   >();
   for (const row of rows30) {
     const prev = map30.get(row.liveCategory) ?? {
       liveCategoryValue: row.liveCategoryValue,
+      liveCategory: row.liveCategory,
       totalViewers: 0,
       broadcastCount: 0,
     };
@@ -113,6 +133,7 @@ export async function getStreamerStats(channelId: string) {
       category: d.liveCategoryValue,
       totalViewers: d.totalViewers,
       count: d.broadcastCount,
+      categoryId: d.liveCategory,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
       concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
     }))
@@ -123,10 +144,34 @@ export async function getStreamerStats(channelId: string) {
       category: d.liveCategoryValue,
       totalViewers: d.totalViewers,
       count: d.broadcastCount,
+      categoryId: d.liveCategory,
       avgViewers: Math.round(d.totalViewers / d.broadcastCount),
       concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
 
   return { today, weekly, monthly, channelInfo };
+}
+
+export async function getStreamerAllStats(channelId: string) {
+  "use cache";
+  cacheLife("statsTime");
+
+  const rows = await prisma.streamerDailySummary.findMany({
+    where: { channelId },
+    orderBy: { date: "asc" },
+  });
+
+  return rows.map((r) => ({
+    date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10),
+    liveCategory: r.liveCategory,
+    liveCategoryValue: r.liveCategoryValue,
+    categoryType: r.categoryType,
+    totalViewers: r.totalViewers,
+    broadcastCount: r.broadcastCount,
+    avgViewers: r.avgViewers,
+    maxViewers: r.maxViewers,
+  }));
 }

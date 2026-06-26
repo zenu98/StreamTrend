@@ -32,6 +32,7 @@ export async function GET(request: Request) {
     const json = await res.json();
     const lives = json.content?.data ?? [];
     next = json.content?.page?.next ?? null;
+    if (i === 0) console.log("tags sample:", lives[0]?.tags);
 
     allLives.push(...lives);
 

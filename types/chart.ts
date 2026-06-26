@@ -6,6 +6,7 @@ export type BaseCategoryData = {
   avgViewers: number;
   concurrentViewers: number;
   posterImageUrl?: string | null;
+  categoryId: string;
 };
 
 // 통계 페이지용

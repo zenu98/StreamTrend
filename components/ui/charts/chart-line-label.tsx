@@ -1,6 +1,13 @@
 "use client";
 
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  LabelList,
+  Line,
+  LineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   Card,
   CardContent,
@@ -83,7 +90,14 @@ export function ChartLineLabel({
                 strokeWidth={2}
                 dot={{ fill: "var(--color-value)", r: 3 }}
                 activeDot={{ r: 6 }}
-              />
+              >
+                <LabelList
+                  position="top"
+                  offset={20}
+                  className="#666"
+                  fontSize={12}
+                />
+              </Line>
             </LineChart>
           </ChartContainer>
         )}

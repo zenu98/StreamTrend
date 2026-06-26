@@ -220,6 +220,7 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
 
   const result = Array.from(categoryMap.values()).map((d) => ({
     category: d.liveCategoryValue,
+    categoryId: d.liveCategory,
     totalViewers: d.totalViewers,
     count:
       d.snapshotCount > 0

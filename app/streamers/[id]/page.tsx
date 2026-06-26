@@ -1,9 +1,10 @@
-import { getStreamerStats } from "@/lib/streamerStats";
+import { getStreamerAllStats, getStreamerStats } from "@/lib/streamerStats";
 import Image from "next/image";
 import { CategoryPieChart } from "@/components/ui/charts/chart-pie-legend";
 import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { Suspense } from "react";
 import { ChartBarLabel } from "@/components/ui/charts/bar-chart-label";
+import { StreamerDateFilter } from "@/components/shared/StreamerDataFilter";
 
 async function StreamerDetail({
   paramsPromise,
@@ -12,7 +13,8 @@ async function StreamerDetail({
 }) {
   const { id } = await paramsPromise;
   const { today, weekly, monthly, channelInfo } = await getStreamerStats(id);
-
+  const allRows = await getStreamerAllStats(id);
+  console.log("today:", today);
   return (
     <main className="p-4 md:p-8 space-y-8">
       {/* 헤더 */}
@@ -45,7 +47,7 @@ async function StreamerDetail({
               title="시청자 수"
               description="게임별 시청자 수"
               data={today}
-              dataKey="totalViewers"
+              dataKey="avgViewers"
             />
             <CategoryPieChart
               title="방송 수"
@@ -56,53 +58,7 @@ async function StreamerDetail({
           </div>
         )}
       </section>
-      {/* 7일 */}
-      <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">최근 7일</h2>
-        {weekly.length === 0 ? (
-          <p className="text-sm text-muted-foreground">데이터 없음</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <CategoryPieChart
-              title="시청자 수"
-              description="게임별 시청자 수"
-              data={weekly}
-              dataKey="totalViewers"
-            />
-            <CategoryPieChart
-              title="방송 수"
-              description="게임별 방송 수"
-              data={weekly}
-              dataKey="count"
-            />
-          </div>
-        )}
-      </section>
-
-      {/* 30일 */}
-      <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">최근 30일</h2>
-        {monthly.length === 0 ? (
-          <p className="text-sm text-muted-foreground">데이터 없음</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ChartBarMixed
-              title="시청자 수"
-              description="게임별 시청자 수"
-              data={monthly}
-              dataKey="totalViewers"
-              valueLabel="시청자: "
-            />
-            <ChartBarMixed
-              title="방송 수"
-              description="게임별 방송 수"
-              data={monthly}
-              dataKey="count"
-              valueLabel="방송: "
-            />
-          </div>
-        )}
-      </section>
+      <StreamerDateFilter rows={allRows} />
     </main>
   );
 }

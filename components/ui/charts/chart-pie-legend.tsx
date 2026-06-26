@@ -37,7 +37,13 @@ export function CategoryPieChart({
           className="mx-auto aspect-square max-h-125"
         >
           <PieChart>
-            <Pie data={chartData} dataKey="value" nameKey="category" />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="category"
+              label={({ percent }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
+              labelLine={true}
+            />
             <ChartLegend
               content={<ChartLegendContent nameKey="category" />}
               className="-translate-y-2 flex-wrap gap-2 *:basis-1/5 *:justify-center"

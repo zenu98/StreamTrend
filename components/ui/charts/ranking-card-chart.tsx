@@ -25,12 +25,12 @@ export function RankingCards({
         <h3 className="font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5  gap-2 max-w-sm md:max-w-none mx-auto">
         {data.slice(0, 10).map((item, i) => (
           <Link
             key={item.category}
-            href={`/games/${encodeURIComponent(item.category)}`}
-            className="relative rounded-lg overflow-hidden aspect-square group"
+            href={`/games/${encodeURIComponent(item.categoryId)}`}
+            className="relative rounded-lg overflow-hidden aspect-3/4  group"
           >
             {/* 배경 썸네일 */}
             {item.posterImageUrl ? (
@@ -45,8 +45,8 @@ export function RankingCards({
               <div className="absolute inset-0 bg-muted" />
             )}
 
-            {/* 어두운 오버레이 */}
-            <div className="absolute inset-0 bg-black/50" />
+            {/* 텍스트 영역 그라데이션 */}
+            <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-linear-to-t from-black/80 to-transparent" />
 
             {/* 순위 */}
             <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
@@ -55,10 +55,10 @@ export function RankingCards({
 
             {/* 텍스트 */}
             <div className="absolute bottom-0 left-0 right-0 p-2 space-y-0.5">
-              <p className="text-white text-xs font-bold line-clamp-1">
+              <p className="text-white text-lg font-bold line-clamp-1">
                 {item.category}
               </p>
-              <p className="text-white/80 text-xs">
+              <p className="text-white/80 text-md">
                 {item[valueKey].toLocaleString()}
                 {valueLabel}
               </p>
