@@ -7,65 +7,64 @@ export async function getLives() {
   "use cache";
   cacheLife("statsTime");
   console.log("getLives 실행됨");
-  let next: string | null = null;
-  const allLives: any[] = [];
-  const collectedAt = new Date().toISOString();
 
-  for (let i = 0; i < 100; i++) {
-    const url = new URL("https://openapi.chzzk.naver.com/open/v1/lives");
-    url.searchParams.set("size", "20");
-    if (next) url.searchParams.set("next", next);
+  // 최신 collectedAt 배치 조회
+  const latest = await prisma.liveSnapshot.findFirst({
+    orderBy: { collectedAt: "desc" },
+    select: { collectedAt: true },
+  });
 
-    const res = await fetch(url.toString(), {
-      headers: {
-        "Client-Id": process.env.CHZZK_CLIENT_ID!,
-        "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
-
-    const json = await res.json();
-    const lives = json.content?.data ?? [];
-    next = json.content?.page?.next ?? null;
-
-    allLives.push(...lives);
-    if (!next) break;
+  if (!latest) {
+    return {
+      collectedAt: new Date().toISOString(),
+      byViewers: [],
+      byCount: [],
+      allGames: [],
+      sportsByViewers: [],
+      sportsByCount: [],
+      allGamesRaw: [],
+    };
   }
 
-  // 게임: GAME 카테고리 + LCK 채널 제외 + watchparty 제외
-  const gameFiltered = allLives.filter(
-    (live) =>
-      live.categoryType === "GAME" &&
-      live.channelId !== LCK_CHANNEL_ID &&
-      !live.liveTitle.toLowerCase().includes("watchparty"),
+  const snapshots = await prisma.liveSnapshot.findMany({
+    where: { collectedAt: latest.collectedAt },
+  });
+
+  const collectedAt = latest.collectedAt.toISOString();
+
+  // 게임: GAME + LCK 제외 + watchparty 제외
+  const gameFiltered = snapshots.filter(
+    (s) =>
+      s.categoryType === "GAME" &&
+      s.channelId !== LCK_CHANNEL_ID &&
+      !s.liveTitle.toLowerCase().includes("watchparty"),
   );
 
-  // 같이보기: SPORTS + LCK 공식 채널 + watchparty 포함 방송
-  const sportsFiltered = allLives.filter(
-    (live) =>
-      live.categoryType === "SPORTS" ||
-      live.channelId === LCK_CHANNEL_ID ||
-      live.liveTitle.toLowerCase().includes("watchparty"),
+  // 같이보기: SPORTS + LCK + watchparty
+  const sportsFiltered = snapshots.filter(
+    (s) =>
+      s.categoryType === "SPORTS" ||
+      s.channelId === LCK_CHANNEL_ID ||
+      s.liveTitle.toLowerCase().includes("watchparty"),
   );
 
-  function aggregateByCategory(lives: any[]) {
+  function aggregateByCategory(snaps: typeof snapshots) {
     const map = new Map<
       string,
       { categoryId: string; count: number; totalViewers: number }
     >();
 
-    for (const live of lives) {
-      if (!live.liveCategoryValue) continue;
-      const existing = map.get(live.liveCategoryValue) ?? {
-        categoryId: live.liveCategory,
+    for (const snap of snaps) {
+      if (!snap.liveCategoryValue) continue;
+      const existing = map.get(snap.liveCategoryValue) ?? {
+        categoryId: snap.liveCategory,
         count: 0,
         totalViewers: 0,
       };
-      map.set(live.liveCategoryValue, {
+      map.set(snap.liveCategoryValue, {
         ...existing,
         count: existing.count + 1,
-        totalViewers: existing.totalViewers + live.concurrentUserCount,
+        totalViewers: existing.totalViewers + snap.concurrentUserCount,
       });
     }
 
@@ -83,7 +82,7 @@ export async function getLives() {
   const gameResult = aggregateByCategory(gameFiltered);
   const sportsResult = aggregateByCategory(sportsFiltered);
 
-  // Category 테이블에서 posterImageUrl 가져오기 (게임만)
+  // posterImageUrl
   const categoryIds = gameResult.map((r) => r.categoryId);
   const categories = await prisma.category.findMany({
     where: { categoryId: { in: categoryIds } },
@@ -98,14 +97,7 @@ export async function getLives() {
     ...r,
     posterImageUrl: posterMap.get(r.categoryId) ?? null,
   }));
-  console.log(
-    "sportsFiltered categories:",
-    sportsFiltered.map((l) => l.liveCategoryValue),
-  );
-  console.log(
-    "sportsByViewers:",
-    sportsResult.map((r) => r.category),
-  );
+
   return {
     collectedAt,
     byViewers: [...gameResultWithPoster]
