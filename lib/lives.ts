@@ -32,20 +32,17 @@ export async function getLives() {
 
   const collectedAt = latest.collectedAt.toISOString();
 
-  // 게임: GAME + LCK 제외 + watchparty 제외
-  const gameFiltered = snapshots.filter(
-    (s) =>
-      s.categoryType === "GAME" &&
-      s.channelId !== LCK_CHANNEL_ID &&
-      !s.liveTitle.toLowerCase().includes("watchparty"),
-  );
+  // 게임: GAME + LCK 제외 + watchparty 제외 였는데 그냥 통합함.
+  const gameFiltered = snapshots;
 
   // 같이보기: SPORTS + LCK + watchparty
   const sportsFiltered = snapshots.filter(
     (s) =>
       s.categoryType === "SPORTS" ||
       s.channelId === LCK_CHANNEL_ID ||
-      s.liveTitle.toLowerCase().includes("watchparty"),
+      s.liveTitle.toLowerCase().includes("watchparty") ||
+      /msi\s*2026/i.test(s.liveTitle) ||
+      s.liveTitle.includes("같이보기"),
   );
 
   function aggregateByCategory(snaps: typeof snapshots) {

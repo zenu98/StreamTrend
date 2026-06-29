@@ -7,6 +7,7 @@
     {
       "path": "/api/summarize",
       "schedule": "0 21 * * *"
-    }
+    },
+    { "path": "/api/update-thumbnails", "schedule": "0 21 * * *" }
   ]
 }

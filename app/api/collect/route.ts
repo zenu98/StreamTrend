@@ -63,16 +63,11 @@ export async function GET(request: Request) {
     if (!next) break;
   }
 
-  // GAME 카테고리만 Category 테이블에 저장
-  const gameCategories = [
+  // GAME 카테고리만 Category 테이블에 저장. ->> 그냥 모든카테고리로 변경함.
+  const allCategories = [
     ...new Map(
       allLives
-        .filter(
-          (live) =>
-            live.categoryType === "GAME" &&
-            live.liveCategory &&
-            live.channelId !== LCK_CHANNEL_ID,
-        )
+        .filter((live) => live.liveCategory)
         .map((live) => [live.liveCategory, live]),
     ).values(),
   ];
@@ -106,13 +101,13 @@ export async function GET(request: Request) {
   const existingIds = (
     await prisma.category.findMany({
       where: {
-        categoryId: { in: gameCategories.map((g) => g.liveCategory) },
+        categoryId: { in: allCategories.map((g) => g.liveCategory) },
       },
       select: { categoryId: true },
     })
   ).map((c) => c.categoryId);
 
-  const newCategories = gameCategories.filter(
+  const newCategories = allCategories.filter(
     (g) => !existingIds.includes(g.liveCategory),
   );
 
@@ -151,8 +146,9 @@ export async function GET(request: Request) {
       });
     }),
   );
-  console.log("newCategoriesAdded:", newCategories.length);
-  console.log("existingIds count:", existingIds.length);
+  // console.log("newCategoriesAdded:", newCategories.length);
+  // console.log("existingIds count:", existingIds.length);
+
   return Response.json({
     success: true,
     totalSaved,

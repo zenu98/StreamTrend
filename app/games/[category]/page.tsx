@@ -132,6 +132,9 @@ async function GameDetail({
                 <p className="text-sm font-bold">
                   {stats.allTimeTopStreamer.channelName}
                 </p>
+                <p className="text-sm font-bold">
+                  {stats.allTimeTopStreamer.liveTitle}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {stats.allTimeTopStreamer.maxViewers.toLocaleString()}명
                 </p>

@@ -154,6 +154,7 @@ export async function getGameStats(categoryId: string) {
       channelImageUrl: true,
       maxViewers: true,
       date: true,
+      liveTitle: true,
     },
   });
 
