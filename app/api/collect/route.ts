@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 
 const LCK_CHANNEL_ID = "9381e7d6816e6d915a44a13c0195b202";
 
@@ -148,6 +149,8 @@ export async function GET(request: Request) {
   );
   // console.log("newCategoriesAdded:", newCategories.length);
   // console.log("existingIds count:", existingIds.length);
+
+  revalidatePath("/");
 
   return Response.json({
     success: true,
