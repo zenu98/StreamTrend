@@ -179,6 +179,7 @@
     @apply border-border outline-ring/50;
   }
   body {
+    /* background: linear-gradient(135deg, #e0e7ff 0%, #fce7f3 50%, #ede9fe 100%); */
     @apply bg-background text-foreground;
   }
   html {

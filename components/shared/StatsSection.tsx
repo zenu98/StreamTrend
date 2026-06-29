@@ -30,18 +30,29 @@ export function StatsSection({ daily, weekly, monthly }: Props) {
   const data = { daily, weekly, monthly }[active];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* 탭 */}
-      <div className="flex gap-2">
+      <h1
+        className="text-8xl font-bold text-center my-8"
+        style={{ color: "#c084fc" }}
+      >
+        {active === "daily"
+          ? "Day"
+          : active === "weekly"
+            ? "7 Days"
+            : "30 Days"}
+      </h1>
+      <div className="flex gap-2 justify-center">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActive(tab.key)}
             className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
               active === tab.key
-                ? "bg-primary text-primary-foreground border-primary"
+                ? "border-transparent text-white"
                 : "bg-background border-border text-muted-foreground"
             }`}
+            style={active === tab.key ? { backgroundColor: "#c084fc" } : {}}
           >
             {tab.label}
           </button>
@@ -52,7 +63,7 @@ export function StatsSection({ daily, weekly, monthly }: Props) {
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
             <ChartBarMixed
               title="평균 시청자 수"
               description="수집 시점당 평균 동시시청자"
@@ -66,7 +77,7 @@ export function StatsSection({ daily, weekly, monthly }: Props) {
               dataKey="count"
             />
           </div>
-          <div className="space-y-4">
+          <div className="space-y-16">
             <RankingCards
               title="최대 동시시청자"
               description="수집 시점 중 최대 시청자 합산"

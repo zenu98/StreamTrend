@@ -22,15 +22,15 @@ export function RankingCards({
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="font-semibold">{title}</h3>
+        <h2 className="font-semibold text-2xl">{title}</h2>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5  gap-2 max-w-sm md:max-w-none mx-auto">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5  gap-4 max-w-sm md:max-w-none mx-auto">
         {data.slice(0, 10).map((item, i) => (
           <Link
             key={item.category}
             href={`/games/${encodeURIComponent(item.categoryId)}`}
-            className="relative rounded-lg overflow-hidden aspect-3/4  group"
+            className="relative rounded-lg overflow-hidden aspect-3/4 group "
           >
             {/* 배경 썸네일 */}
             {item.posterImageUrl ? (

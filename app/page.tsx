@@ -36,12 +36,12 @@ async function HomeContent() {
 
   return (
     <>
+      <StatsSection daily={daily} weekly={weekly} monthly={monthly} />
       <GameCompareChart
         defaultGames={top3Games}
         weekly={weeklyByDate}
         monthly={monthlyByDate}
       />
-      <StatsSection daily={daily} weekly={weekly} monthly={monthly} />
     </>
   );
 }
