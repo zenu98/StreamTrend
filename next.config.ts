@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   cacheLife: {
     statsTime: {
-      stale: 300,
+      stale: 0,
       revalidate: 300,
       expire: 3600,
     },
