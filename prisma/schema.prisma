@@ -28,6 +28,7 @@ model LiveSnapshot {
   channelId             String
   channelName           String
   channelImageUrl       String?
+  followerCount         Int      @default(0)
 
   @@index([collectedAt])
   @@index([collectedAt, categoryType])
@@ -47,6 +48,7 @@ model DailySummary {
   peakViewers       Int      @default(0)
 
   @@unique([date, liveCategoryValue, categoryType])
+  @@index([date, categoryType])
 }
 
 model StreamerDailySummary {
@@ -81,4 +83,5 @@ model Streamer {
   channelName     String
   channelImageUrl String?
   updatedAt       DateTime @updatedAt
+  followerCount   Int      @default(0)
 }

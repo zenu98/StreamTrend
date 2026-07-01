@@ -56,6 +56,7 @@ export async function GET(request: Request) {
         channelId: live.channelId,
         channelName: live.channelName,
         channelImageUrl: live.channelImageUrl,
+        followerCount: live.followerCount ?? 0,
         collectedAt,
       })),
     });
@@ -89,11 +90,13 @@ export async function GET(request: Request) {
         update: {
           channelName: live.channelName,
           channelImageUrl: live.channelImageUrl ?? null,
+          followerCount: live.followerCount ?? 0,
         },
         create: {
           channelId: live.channelId,
           channelName: live.channelName,
           channelImageUrl: live.channelImageUrl ?? null,
+          followerCount: live.followerCount ?? 0,
         },
       }),
     ),

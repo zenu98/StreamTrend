@@ -1,9 +1,10 @@
 import { LiveSection } from "@/components/shared/LiveSection";
 import { GameCompareChart } from "@/components/shared/GameCompareChart";
 import { StatsSection } from "@/components/shared/StatsSection";
-import { getStats, getStatsByDate } from "@/lib/stats";
+import { getStats, getStatsByDate, getWeeklyTopGames } from "@/lib/stats";
 import { getLives } from "@/lib/lives";
 import { Suspense } from "react";
+import { TrendingGame } from "@/components/shared/TrendingGame";
 
 export default function Home() {
   return (
@@ -23,49 +24,33 @@ export default function Home() {
 }
 
 async function HomeContent() {
-  console.time("total");
-
-  console.time("getStats daily");
-  const daily = await getStats("daily");
-  console.timeEnd("getStats daily");
-
-  console.time("getStats weekly");
-  const weekly = await getStats("weekly");
-  console.timeEnd("getStats weekly");
-
-  console.time("getStats monthly");
-  const monthly = await getStats("monthly");
-  console.timeEnd("getStats monthly");
-
-  console.time("getStatsByDate weekly");
-  const weeklyByDate = await getStatsByDate("weekly");
-  console.timeEnd("getStatsByDate weekly");
-
-  console.time("getStatsByDate monthly");
-  const monthlyByDate = await getStatsByDate("monthly");
-  console.timeEnd("getStatsByDate monthly");
-
-  console.time("getLives");
-  const lives = await getLives();
-  console.timeEnd("getLives");
-
-  console.timeEnd("total");
-
-  const top3Games = lives.byViewers.slice(0, 3).map((d) => d.category);
-
+  const [daily, weekly, monthly, lives] = await Promise.all([
+    getStats("daily"),
+    getStats("weekly"),
+    getStats("monthly"),
+    getLives(),
+  ]);
+  // const top3Games = lives.byViewers.slice(0, 3).map((d) => d.category);
+  console.time("getWeeklyTopGames");
+  const topGames = await getWeeklyTopGames();
+  console.timeEnd("getWeeklyTopGames");
   return (
     <>
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold">주간 인기 게임 Top 10</h2>
+        <TrendingGame games={topGames} />
+      </section>
       <StatsSection
         daily={daily}
         weekly={weekly}
         monthly={monthly}
         lives={lives}
       />
-      <GameCompareChart
+      {/* <GameCompareChart
         defaultGames={top3Games}
         weekly={weeklyByDate}
         monthly={monthlyByDate}
-      />
+      /> */}
     </>
   );
 }

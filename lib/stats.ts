@@ -250,3 +250,104 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
       .slice(0, 10),
   };
 }
+export async function getWeeklyTopGames() {
+  "use cache";
+  cacheLife("statsTime");
+
+  const from = getPeriodFrom("weekly");
+
+  const rows = await prisma.dailySummary.findMany({
+    where: { date: { gte: from }, categoryType: "GAME" },
+  });
+
+  // 게임별 집계
+  const categoryMap = new Map<
+    string,
+    {
+      liveCategory: string;
+      liveCategoryValue: string;
+      totalViewers: number;
+      snapshotCount: number;
+      posterImageUrl: string | null;
+    }
+  >();
+
+  for (const row of rows) {
+    const prev = categoryMap.get(row.liveCategoryValue) ?? {
+      liveCategory: row.liveCategory,
+      liveCategoryValue: row.liveCategoryValue,
+      totalViewers: 0,
+      snapshotCount: 0,
+      posterImageUrl: null,
+    };
+    categoryMap.set(row.liveCategoryValue, {
+      ...prev,
+      totalViewers: prev.totalViewers + row.totalViewers,
+      snapshotCount: prev.snapshotCount + row.snapshotCount,
+    });
+  }
+
+  // posterImageUrl
+  const categoryIds = [...categoryMap.values()].map((c) => c.liveCategory);
+  const categories = await prisma.category.findMany({
+    where: { categoryId: { in: categoryIds } },
+    select: { categoryId: true, posterImageUrl: true },
+  });
+  const posterMap = new Map(
+    categories.map((c) => [c.categoryId, c.posterImageUrl]),
+  );
+
+  // 상위 10개 게임
+  const top10 = [...categoryMap.values()]
+    .map((d) => ({
+      category: d.liveCategoryValue,
+      categoryId: d.liveCategory,
+      concurrentViewers:
+        d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
+      posterImageUrl: posterMap.get(d.liveCategory) ?? null,
+    }))
+    .sort((a, b) => b.concurrentViewers - a.concurrentViewers)
+    .slice(0, 10);
+  const top10CategoryIds = top10.map((g) => g.categoryId);
+
+  const streamerRows = await prisma.streamerDailySummary.findMany({
+    where: {
+      date: { gte: from },
+      categoryType: "GAME",
+      liveCategory: { in: top10CategoryIds },
+    },
+  });
+  // 게임별 상위 2명 스트리머
+  const streamerMap = new Map<
+    string,
+    {
+      channelId: string;
+      channelName: string;
+      channelImageUrl: string | null;
+      totalViewers: number;
+    }[]
+  >();
+
+  for (const row of streamerRows) {
+    const list = streamerMap.get(row.liveCategory) ?? [];
+    const existing = list.find((s) => s.channelId === row.channelId);
+    if (existing) {
+      existing.totalViewers += row.totalViewers;
+    } else {
+      list.push({
+        channelId: row.channelId,
+        channelName: row.channelName,
+        channelImageUrl: row.channelImageUrl ?? null,
+        totalViewers: row.totalViewers,
+      });
+    }
+    streamerMap.set(row.liveCategory, list);
+  }
+
+  return top10.map((game) => ({
+    ...game,
+    topStreamers: (streamerMap.get(game.categoryId) ?? [])
+      .sort((a, b) => b.totalViewers - a.totalViewers)
+      .slice(0, 2),
+  }));
+}
