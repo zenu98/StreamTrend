@@ -28,6 +28,9 @@ model LiveSnapshot {
   channelId             String
   channelName           String
   channelImageUrl       String?
+
+  @@index([collectedAt])
+  @@index([collectedAt, categoryType])
 }
 
 model DailySummary {
