@@ -33,18 +33,7 @@ export async function GET(request: Request) {
     const json = await res.json();
     const lives = json.content?.data ?? [];
     next = json.content?.page?.next ?? null;
-    // if (i === 0) {
-    //   console.log(
-    //     "categoryType 샘플:",
-    //     lives
-    //       .map((l: any) => ({
-    //         categoryType: l.categoryType,
-    //         liveCategory: l.liveCategory,
-    //         liveCategoryValue: l.liveCategoryValue,
-    //       }))
-    //       .slice(0, 5),
-    //   );
-    // }
+    if (i === 0) console.log("live keys:", Object.keys(lives[0]));
 
     allLives.push(...lives);
 
@@ -166,7 +155,7 @@ export async function GET(request: Request) {
   // console.log("existingIds count:", existingIds.length);
 
   revalidatePath("/");
-
+  console.log("followerCount sample:", streamers[0]?.followerCount);
   return Response.json({
     success: true,
     totalSaved,

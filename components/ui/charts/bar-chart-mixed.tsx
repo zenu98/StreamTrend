@@ -57,12 +57,7 @@ export function ChartBarMixed<T extends BaseCategoryData>({
           className="w-full"
           style={{ height: `${data.length * 45}px` }}
         >
-          <BarChart
-            accessibilityLayer
-            data={chartData}
-            layout="vertical"
-            margin={{ left: 0 }}
-          >
+          <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
             <YAxis
               dataKey="category"
               width={yAxisWidth}
