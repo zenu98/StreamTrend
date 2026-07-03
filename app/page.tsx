@@ -48,7 +48,7 @@ async function HomeContent() {
 
   return (
     <>
-      <section className="space-y-4 ">
+      <section className="space-y-32 ">
         <TrendingGame
           byConcurrent={topGames.byConcurrent}
           byMax={topGames.byMax}
