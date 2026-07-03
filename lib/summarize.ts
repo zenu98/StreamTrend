@@ -1,7 +1,5 @@
 import { prisma } from "@/lib/prisma";
 
-const LCK_CHANNEL_ID = "9381e7d6816e6d915a44a13c0195b202";
-
 function getKSTDayBoundary(baseDate: Date, offsetDays = 0): Date {
   const kstBase = new Date(baseDate.getTime() + 9 * 60 * 60 * 1000);
   const kstDay = new Date(kstBase);
@@ -40,103 +38,68 @@ export async function summarizeYesterday(targetDate?: Date) {
   }
 
   const snapshots = await prisma.liveSnapshot.findMany({
-    where: {
-      collectedAt: { gte: from, lt: to },
-      categoryType: { in: ["GAME", "SPORTS", "ETC"] },
-    },
+    where: { collectedAt: { gte: from, lt: to } },
   });
 
-  // 게임: GAME + LCK 채널 제외 + watchparty 제외
-  const gameSnaps = snapshots.filter(
-    (s) =>
-      s.categoryType === "GAME" &&
-      s.channelId !== LCK_CHANNEL_ID &&
-      !s.liveTitle.toLowerCase().includes("watchparty"),
-  );
-
-  // 같이보기: SPORTS + LCK 공식 채널 + watchparty 포함
-  const sportsSnaps = snapshots.filter(
-    (s) =>
-      s.categoryType === "SPORTS" ||
-      s.channelId === LCK_CHANNEL_ID ||
-      s.liveTitle.toLowerCase().includes("watchparty"),
-  );
-
-  const talkSnaps = snapshots.filter(
-    (s) =>
-      s.categoryType === "ETC" &&
-      s.liveCategory === "talk" &&
-      s.channelId !== LCK_CHANNEL_ID &&
-      !s.liveTitle.toLowerCase().includes("watchparty"),
-  );
-
-  function aggregateByCategory(snaps: typeof snapshots, categoryType: string) {
-    const map = new Map<
-      string,
-      {
-        liveCategory: string;
-        liveCategoryValue: string;
-        totalViewers: number;
-        count: number;
-      }
-    >();
-
-    for (const snap of snaps) {
-      if (!snap.liveCategoryValue) continue;
-      const prev = map.get(snap.liveCategoryValue) ?? {
-        liveCategory: snap.liveCategory,
-        liveCategoryValue: snap.liveCategoryValue,
-        totalViewers: 0,
-        count: 0,
-      };
-      map.set(snap.liveCategoryValue, {
-        ...prev,
-        totalViewers: prev.totalViewers + snap.concurrentUserCount,
-        count: prev.count + 1,
-      });
+  // 카테고리별 집계
+  const categoryMap = new Map<
+    string,
+    {
+      liveCategory: string;
+      liveCategoryValue: string;
+      categoryType: string;
+      totalViewers: number;
+      count: number;
+      snapsMap: Map<number, number>;
+      peakViewers: number;
     }
+  >();
 
-    return Array.from(map.values()).map((d) => {
-      const gameSnaps = snaps.filter(
-        (s) => s.liveCategoryValue === d.liveCategoryValue,
-      );
-      const gameCollectedAts = new Set(
-        gameSnaps.map((s) => s.collectedAt.getTime()),
-      );
-      const snapshotCount = gameCollectedAts.size;
+  for (const snap of snapshots) {
+    if (!snap.liveCategoryValue) continue;
+    const key = `${snap.liveCategoryValue}__${snap.categoryType}`;
+    const prev = categoryMap.get(key) ?? {
+      liveCategory: snap.liveCategory,
+      liveCategoryValue: snap.liveCategoryValue,
+      categoryType: snap.categoryType,
+      totalViewers: 0,
+      count: 0,
+      snapsMap: new Map<number, number>(),
+      peakViewers: 0,
+    };
+    const snapsMap = prev.snapsMap;
+    const t = snap.collectedAt.getTime();
+    snapsMap.set(t, (snapsMap.get(t) ?? 0) + snap.concurrentUserCount);
 
-      const timeMap = new Map<number, number>();
-      for (const snap of gameSnaps) {
-        const t = snap.collectedAt.getTime();
-        timeMap.set(t, (timeMap.get(t) ?? 0) + snap.concurrentUserCount);
-      }
-      const maxViewers = timeMap.size > 0 ? Math.max(...timeMap.values()) : 0;
-      const peakViewers =
-        gameSnaps.length > 0
-          ? Math.max(...gameSnaps.map((s) => s.concurrentUserCount))
-          : 0;
-
-      return {
-        date: summaryDateUTC,
-        categoryType,
-        liveCategory: d.liveCategory,
-        liveCategoryValue: d.liveCategoryValue,
-        totalViewers: d.totalViewers,
-        broadcastCount: d.count,
-        snapshotCount,
-        avgViewers: Math.round(d.totalViewers / d.count),
-        maxViewers,
-        peakViewers,
-      };
+    categoryMap.set(key, {
+      ...prev,
+      totalViewers: prev.totalViewers + snap.concurrentUserCount,
+      count: prev.count + 1,
+      snapsMap,
+      peakViewers: Math.max(prev.peakViewers, snap.concurrentUserCount),
     });
   }
 
-  const gameSummaries = aggregateByCategory(gameSnaps, "GAME");
-  const sportsSummaries = aggregateByCategory(sportsSnaps, "SPORTS");
-  const summaries = [...gameSummaries, ...sportsSummaries];
+  const summaries = Array.from(categoryMap.values()).map((d) => {
+    const snapshotCount = d.snapsMap.size;
+    const maxViewers =
+      d.snapsMap.size > 0 ? Math.max(...d.snapsMap.values()) : 0;
+
+    return {
+      date: summaryDateUTC,
+      categoryType: d.categoryType,
+      liveCategory: d.liveCategory,
+      liveCategoryValue: d.liveCategoryValue,
+      totalViewers: d.totalViewers,
+      broadcastCount: d.count,
+      snapshotCount,
+      avgViewers: Math.round(d.totalViewers / d.count),
+      maxViewers,
+      peakViewers: d.peakViewers,
+    };
+  });
 
   // 스트리머별 집계
-  const allSnaps = [...gameSnaps, ...sportsSnaps, ...talkSnaps];
   const streamerMap = new Map<
     string,
     {
@@ -153,15 +116,8 @@ export async function summarizeYesterday(targetDate?: Date) {
     }
   >();
 
-  for (const snap of allSnaps) {
-    const effectiveCategoryType =
-      snap.channelId === LCK_CHANNEL_ID ||
-      snap.liveTitle.toLowerCase().includes("watchparty")
-        ? "SPORTS"
-        : snap.liveCategory === "talk"
-          ? "TALK"
-          : snap.categoryType;
-
+  for (const snap of snapshots) {
+    if (!snap.liveCategoryValue) continue;
     const key = `${snap.channelId}__${snap.liveCategory}`;
     const prev = streamerMap.get(key) ?? {
       channelId: snap.channelId,
@@ -169,7 +125,7 @@ export async function summarizeYesterday(targetDate?: Date) {
       channelImageUrl: snap.channelImageUrl ?? null,
       liveCategory: snap.liveCategory,
       liveCategoryValue: snap.liveCategoryValue,
-      categoryType: effectiveCategoryType,
+      categoryType: snap.categoryType,
       maxViewers: 0,
       totalViewers: 0,
       count: 0,
@@ -219,8 +175,7 @@ export async function summarizeYesterday(targetDate?: Date) {
     success: true,
     date: summaryDateUTC,
     range: { from, to },
-    gameCount: gameSummaries.length,
-    sportsCount: sportsSummaries.length,
+    totalCount: summaries.length,
     streamerCount: streamerSummaries.length,
   };
 }

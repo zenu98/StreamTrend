@@ -67,7 +67,7 @@ export function ChartRadialText({
               gridType="circle"
               radialLines={false}
               stroke="none"
-              className="first:fill-muted last:fill-background"
+              className="first:fill-white/10 last:fill-transparent"
               polarRadius={[90, 70]}
             />
             <RadialBar dataKey="value" background cornerRadius={10} />
@@ -81,7 +81,7 @@ export function ChartRadialText({
                         y={viewBox.cy}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill={gradients[tier]?.text ?? gradients.default.text}
+                        fill="white"
                       >
                         <tspan fontSize={32} fontWeight="bold">
                           {value.toLocaleString()}

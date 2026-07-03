@@ -146,7 +146,7 @@ export async function getGameStats(categoryId: string) {
     rows.length > 0 ? Math.max(...rows.map((r) => r.peakViewers)) : 0;
 
   const allTimeTopStreamer = await prisma.streamerDailySummary.findFirst({
-    where: { liveCategory: categoryId, categoryType: "GAME" },
+    where: { liveCategory: categoryId },
     orderBy: { maxViewers: "desc" },
     select: {
       channelId: true,

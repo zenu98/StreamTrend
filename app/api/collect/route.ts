@@ -46,11 +46,7 @@ export async function GET(request: Request) {
         openDate: live.openDate,
         adult: live.adult,
         tags: live.tags,
-        // LCK 채널은 SPORTS로 분류
-        categoryType:
-          live.channelId === LCK_CHANNEL_ID
-            ? "SPORTS"
-            : (live.categoryType ?? "ETC"),
+        categoryType: live.categoryType ?? "ETC",
         liveCategory: live.liveCategory ?? "",
         liveCategoryValue: live.liveCategoryValue ?? "",
         channelId: live.channelId,
