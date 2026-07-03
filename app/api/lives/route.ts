@@ -56,5 +56,5 @@ export async function GET() {
     .sort((a, b) => b.totalViewers - a.totalViewers)
     .slice(0, 10); // 상위 10개만
 
-  return Response.json({ result });
+  return Response.json({ result: allLives });
 }

@@ -33,7 +33,18 @@ export async function GET(request: Request) {
     const json = await res.json();
     const lives = json.content?.data ?? [];
     next = json.content?.page?.next ?? null;
-    if (i === 0) console.log("tags sample:", lives[0]?.tags);
+    // if (i === 0) {
+    //   console.log(
+    //     "categoryType 샘플:",
+    //     lives
+    //       .map((l: any) => ({
+    //         categoryType: l.categoryType,
+    //         liveCategory: l.liveCategory,
+    //         liveCategoryValue: l.liveCategoryValue,
+    //       }))
+    //       .slice(0, 5),
+    //   );
+    // }
 
     allLives.push(...lives);
 
@@ -46,7 +57,12 @@ export async function GET(request: Request) {
         openDate: live.openDate,
         adult: live.adult,
         tags: live.tags,
-        categoryType: live.categoryType ?? "ETC",
+        categoryType:
+          live.categoryType === "GAME"
+            ? "GAME"
+            : live.categoryType === "SPORTS"
+              ? "SPORTS"
+              : "ETC",
         liveCategory: live.liveCategory ?? "",
         liveCategoryValue: live.liveCategoryValue ?? "",
         channelId: live.channelId,

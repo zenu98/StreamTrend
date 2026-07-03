@@ -90,14 +90,7 @@ export function ChartLineLabel({
                 strokeWidth={2}
                 dot={{ fill: "var(--color-value)", r: 3 }}
                 activeDot={{ r: 6 }}
-              >
-                <LabelList
-                  position="top"
-                  offset={20}
-                  className="#666"
-                  fontSize={12}
-                />
-              </Line>
+              ></Line>
             </LineChart>
           </ChartContainer>
         )}
