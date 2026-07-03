@@ -1,6 +1,13 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, LabelList } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  XAxis,
+  LabelList,
+  YAxis,
+} from "recharts";
 import {
   Card,
   CardContent,
@@ -34,19 +41,26 @@ export function ChartBarLabel({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig}>
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 20 }}>
+      <CardContent className="flex flex-col justify-center flex-1">
+        <ChartContainer config={chartConfig} className="w-full">
+          <BarChart accessibilityLayer data={chartData} barSize={32}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="category"
               tickLine={false}
               tickMargin={10}
+              tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }}
               axisLine={false}
               tickFormatter={(value) =>
                 (chartConfig[value as keyof typeof chartConfig]
                   ?.label as string) ?? value
               }
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }}
+              tickFormatter={(value) => value.toLocaleString()}
             />
             <ChartTooltip
               cursor={false}

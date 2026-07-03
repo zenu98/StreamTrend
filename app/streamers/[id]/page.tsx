@@ -42,7 +42,7 @@ async function StreamerDetail({
         {today.length === 0 ? (
           <p className="text-sm text-muted-foreground">데이터 없음</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
             <ChartBarLabel
               title="시청자 수"
               description="게임별 시청자 수"
