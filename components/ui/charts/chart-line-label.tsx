@@ -55,10 +55,10 @@ export function ChartLineLabel({
             데이터 없음
           </div>
         ) : (
-          <ChartContainer config={chartConfig} className="w-full h-40 md:h-52">
+          <ChartContainer config={chartConfig} className="w-full h-40 md:h-64">
             <LineChart
               data={chartData}
-              margin={{ top: 20, left: 12, right: 12, bottom: 0 }}
+              margin={{ top: 24, left: 12, right: 12, bottom: 0 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
@@ -69,7 +69,14 @@ export function ChartLineLabel({
                 tick={{ fontSize: 10 }}
                 interval="preserveStartEnd"
               />
-              <YAxis hide />
+              <YAxis
+                width={40}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }}
+                tickFormatter={(value) => value.toLocaleString()}
+              />
               <ChartTooltip
                 cursor={false}
                 content={

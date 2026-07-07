@@ -34,7 +34,7 @@ export function CategoryPieChart({
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square max-h-125"
+          className="mx-auto aspect-square max-h-100"
         >
           <PieChart>
             <Pie

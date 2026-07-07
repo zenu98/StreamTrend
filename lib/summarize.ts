@@ -164,8 +164,11 @@ export async function summarizeYesterday(targetDate?: Date) {
   });
 
   await prisma.$transaction([
-    prisma.dailySummary.createMany({ data: summaries }),
-    prisma.streamerDailySummary.createMany({ data: streamerSummaries }),
+    prisma.dailySummary.createMany({ data: summaries, skipDuplicates: true }),
+    prisma.streamerDailySummary.createMany({
+      data: streamerSummaries,
+      skipDuplicates: true,
+    }),
     prisma.liveSnapshot.deleteMany({
       where: { collectedAt: { gte: from, lt: to } },
     }),

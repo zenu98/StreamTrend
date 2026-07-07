@@ -38,6 +38,8 @@ export type TimeSeriesData = {
   totalViewers: number;
   broadcastCount: number;
   concurrentViewers: number;
+  maxViewers: number;
+  peakViewers: number;
 };
 
 export type TimeSeriesChartProps = {
@@ -45,4 +47,18 @@ export type TimeSeriesChartProps = {
   description: string;
   data: TimeSeriesData[];
   dataKey: keyof TimeSeriesData;
+};
+export type GameDateData = {
+  date: string;
+  concurrentViewers: number;
+  maxViewers: number;
+  peakViewers: number;
+};
+
+export type GamePeriodData = {
+  dates: string[];
+  games: {
+    game: string;
+    data: GameDateData[];
+  }[];
 };

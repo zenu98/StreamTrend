@@ -42,7 +42,7 @@ export function ChartBarLabel({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col justify-center flex-1">
-        <ChartContainer config={chartConfig} className="w-full">
+        <ChartContainer config={chartConfig} className="w-full max-h-100 ">
           <BarChart accessibilityLayer data={chartData} barSize={32}>
             <CartesianGrid vertical={false} />
             <XAxis

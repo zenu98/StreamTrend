@@ -9,6 +9,11 @@ import { ChartLineLabel } from "@/components/ui/charts/chart-line-label";
 import { ChartRadialText } from "@/components/ui/charts/chart-radial-text";
 import Link from "next/link";
 import { getLives } from "@/lib/lives";
+import { getStatsByDate } from "@/lib/stats";
+import { GameCompareChart } from "@/components/shared/GameCompareChart";
+import { GameTrendChart } from "@/components/shared/GameTrendChart";
+import { GameChartTabs } from "@/components/shared/GameChartTabs";
+import { getAllCategories } from "@/lib/games";
 
 export default function GameDetailPage({
   params,
@@ -32,10 +37,11 @@ async function GameDetail({
   const { category } = await paramsPromise;
   const categoryId = decodeURIComponent(category);
 
-  const [stats, liveStats, categoryInfo] = await Promise.all([
+  const [stats, liveStats, categoryInfo, allCategories] = await Promise.all([
     getGameStats(categoryId),
     getGameLiveStats(categoryId),
     getGameCategoryInfo(categoryId),
+    getAllCategories(),
   ]);
 
   return (
@@ -95,6 +101,10 @@ async function GameDetail({
                 <p className="text-sm font-bold">
                   {liveStats.currentMaxViewer.channelName}
                 </p>
+                <p className="text-sm ">
+                  {liveStats.currentMaxViewer.liveTitle}
+                </p>
+
                 <p className="text-xs text-muted-foreground">
                   {liveStats.currentMaxViewer.concurrentUserCount.toLocaleString()}
                   명
@@ -106,7 +116,7 @@ async function GameDetail({
       </section>
 
       {/* 역대 섹션 */}
-      <section className="space-y-4">
+      <section className="space-y-4 ">
         <h2 className="text-lg md:text-xl font-bold">역대</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <ChartRadialText
@@ -132,9 +142,7 @@ async function GameDetail({
                 <p className="text-sm font-bold">
                   {stats.allTimeTopStreamer.channelName}
                 </p>
-                <p className="text-sm font-bold">
-                  {stats.allTimeTopStreamer.liveTitle}
-                </p>
+                <p className="text-sm ">{stats.allTimeTopStreamer.liveTitle}</p>
                 <p className="text-xs text-muted-foreground">
                   {stats.allTimeTopStreamer.maxViewers.toLocaleString()}명
                 </p>
@@ -152,54 +160,13 @@ async function GameDetail({
         </div>
       </section>
 
-      {/* 시청자 수 추이 */}
-      <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">시청자 수 추이</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <ChartLineLabel
-            title="주간"
-            description="최근 7일"
-            data={stats.weekly}
-            dataKey="concurrentViewers"
-          />
-          <ChartLineLabel
-            title="월간"
-            description="최근 30일"
-            data={stats.monthly}
-            dataKey="concurrentViewers"
-          />
-          <ChartLineLabel
-            title="연간"
-            description="올해 월별"
-            data={stats.yearly}
-            dataKey="concurrentViewers"
-          />
-        </div>
-      </section>
-
-      {/* 방송 수 추이 */}
-      <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">방송 수 추이</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <ChartLineLabel
-            title="주간"
-            description="최근 7일"
-            data={stats.weekly}
-            dataKey="broadcastCount"
-          />
-          <ChartLineLabel
-            title="월간"
-            description="최근 30일"
-            data={stats.monthly}
-            dataKey="broadcastCount"
-          />
-          <ChartLineLabel
-            title="연간"
-            description="올해 월별"
-            data={stats.yearly}
-            dataKey="broadcastCount"
-          />
-        </div>
+      <section className="space-y-4 mt-24">
+        <GameChartTabs
+          allRows={stats.allRows}
+          defaultGame={categoryInfo?.categoryValue ?? ""}
+          defaultCategoryId={categoryId}
+          allCategories={allCategories}
+        />
       </section>
     </main>
   );

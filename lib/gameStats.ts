@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { getLives } from "./lives";
+import { toKSTDateString } from "./utils";
 
 export async function getGameCategoryInfo(categoryId: string) {
   "use cache";
@@ -55,9 +56,65 @@ export async function getGameLiveStats(categoryId: string) {
           channelName: currentMaxViewer.channelName,
           channelImageUrl: currentMaxViewer.channelImageUrl ?? null,
           concurrentUserCount: currentMaxViewer.concurrentUserCount,
+          liveTitle: currentMaxViewer.liveTitle,
         }
       : null,
   };
+}
+
+/**
+ * 같은 KST 날짜("MM-DD")로 묶이는 row들을 병합한다.
+ * 수동 테스트 등으로 같은 날짜 범위에 summarize가 중복 실행되어
+ * DailySummary에 부분 데이터 row가 여러 개 쌓인 경우를 화면 표시 단계에서 흡수하기 위함.
+ * DB의 원본 row는 건드리지 않음.
+ */
+function mergeRowsByKSTDate(
+  rows: {
+    date: Date;
+    totalViewers: number;
+    broadcastCount: number;
+    snapshotCount: number;
+    maxViewers: number;
+    peakViewers: number;
+  }[],
+) {
+  const mergedMap = new Map<
+    string,
+    {
+      totalViewers: number;
+      broadcastCount: number;
+      snapshotCount: number;
+      maxViewers: number;
+      peakViewers: number;
+    }
+  >();
+
+  for (const r of rows) {
+    const key = toKSTDateString(r.date);
+    const prev = mergedMap.get(key);
+    mergedMap.set(key, {
+      totalViewers: (prev?.totalViewers ?? 0) + r.totalViewers,
+      broadcastCount: (prev?.broadcastCount ?? 0) + r.broadcastCount,
+      snapshotCount: (prev?.snapshotCount ?? 0) + r.snapshotCount,
+      maxViewers: Math.max(prev?.maxViewers ?? 0, r.maxViewers),
+      peakViewers: Math.max(prev?.peakViewers ?? 0, r.peakViewers),
+    });
+  }
+
+  return Array.from(mergedMap.entries())
+    .sort(([a], [b]) => (a > b ? 1 : a < b ? -1 : 0))
+    .map(([date, v]) => ({
+      date,
+      totalViewers: v.totalViewers,
+      concurrentViewers:
+        v.snapshotCount > 0 ? Math.round(v.totalViewers / v.snapshotCount) : 0,
+      broadcastCount:
+        v.snapshotCount > 0
+          ? Math.round(v.broadcastCount / v.snapshotCount)
+          : v.broadcastCount,
+      maxViewers: v.maxViewers,
+      peakViewers: v.peakViewers,
+    }));
 }
 
 export async function getGameStats(categoryId: string) {
@@ -67,10 +124,6 @@ export async function getGameStats(categoryId: string) {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   kstNow.setUTCHours(0, 0, 0, 0);
-  const todayKSTasUTC = new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
-
-  const from30 = new Date(todayKSTasUTC);
-  from30.setUTCDate(from30.getUTCDate() - 30);
 
   const fromYear = new Date(
     Date.UTC(kstNow.getUTCFullYear(), 0, 1) - 9 * 60 * 60 * 1000,
@@ -80,65 +133,6 @@ export async function getGameStats(categoryId: string) {
     where: { liveCategory: categoryId, date: { gte: fromYear } },
     orderBy: { date: "asc" },
   });
-
-  const from7 = new Date(todayKSTasUTC);
-  from7.setUTCDate(from7.getUTCDate() - 7);
-
-  const weekly = rows
-    .filter((r) => r.date >= from7)
-    .map((r) => ({
-      date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(5, 10),
-      totalViewers: r.avgViewers,
-      concurrentViewers:
-        r.snapshotCount > 0 ? Math.round(r.totalViewers / r.snapshotCount) : 0,
-      broadcastCount:
-        r.snapshotCount > 0
-          ? Math.round(r.broadcastCount / r.snapshotCount)
-          : r.broadcastCount,
-    }));
-
-  const monthly = rows
-    .filter((r) => r.date >= from30)
-    .map((r) => ({
-      date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
-        .toISOString()
-        .slice(5, 10),
-      totalViewers: r.totalViewers,
-      concurrentViewers:
-        r.snapshotCount > 0 ? Math.round(r.totalViewers / r.snapshotCount) : 0,
-      broadcastCount: r.broadcastCount,
-    }));
-
-  const monthMap = new Map<
-    string,
-    { totalViewers: number; broadcastCount: number; snapshotCount: number }
-  >();
-  for (const r of rows) {
-    const kstDate = new Date(r.date.getTime() + 9 * 60 * 60 * 1000);
-    const key = `${kstDate.getUTCMonth() + 1}월`;
-    const prev = monthMap.get(key) ?? {
-      totalViewers: 0,
-      broadcastCount: 0,
-      snapshotCount: 0,
-    };
-    monthMap.set(key, {
-      totalViewers: prev.totalViewers + r.totalViewers,
-      broadcastCount: prev.broadcastCount + r.broadcastCount,
-      snapshotCount: prev.snapshotCount + r.snapshotCount,
-    });
-  }
-
-  const yearly = Array.from(monthMap.entries()).map(([month, data]) => ({
-    date: month,
-    totalViewers: data.totalViewers,
-    broadcastCount: data.broadcastCount,
-    concurrentViewers:
-      data.snapshotCount > 0
-        ? Math.round(data.totalViewers / data.snapshotCount)
-        : 0,
-  }));
 
   const maxViewers =
     rows.length > 0 ? Math.max(...rows.map((r) => r.maxViewers)) : 0;
@@ -158,12 +152,12 @@ export async function getGameStats(categoryId: string) {
     },
   });
 
+  const allRows = mergeRowsByKSTDate(rows);
+
   return {
-    weekly,
-    monthly,
-    yearly,
     maxViewers,
     peakViewers,
     allTimeTopStreamer,
+    allRows,
   };
 }
