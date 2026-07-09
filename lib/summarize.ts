@@ -30,16 +30,13 @@ export async function summarizeYesterday(targetDate?: Date) {
   summaryDate.setUTCHours(0, 0, 0, 0);
   const summaryDateUTC = new Date(summaryDate.getTime() - 9 * 60 * 60 * 1000);
 
-  const existing = await prisma.dailySummary.findFirst({
-    where: { date: summaryDateUTC },
-  });
-  if (existing) {
-    return { skipped: true, date: summaryDateUTC };
-  }
-
   const snapshots = await prisma.liveSnapshot.findMany({
     where: { collectedAt: { gte: from, lt: to } },
   });
+
+  if (snapshots.length === 0) {
+    return { skipped: true, reason: "no-snapshots", date: summaryDateUTC };
+  }
 
   // 카테고리별 집계
   const categoryMap = new Map<
