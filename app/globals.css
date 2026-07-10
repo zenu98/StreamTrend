@@ -213,7 +213,7 @@
 
     @apply font-sans;
   }
-  main {
+  /* main {
     @apply max-w-7xl mx-auto;
-  }
+  } */
 }

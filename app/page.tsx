@@ -48,7 +48,7 @@ async function HomeContent() {
 
   return (
     <>
-      <main className="space-y-32 mx-auto">
+      <main className="space-y-32 max-w-6xl mx-auto">
         <TrendingGame
           byConcurrent={topGames.byConcurrent}
           byMax={topGames.byMax}
