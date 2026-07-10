@@ -4,9 +4,10 @@ import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import { differenceInCalendarDays } from "date-fns";
 import { CalendarDays } from "lucide-react";
-import { GameTrendChart } from "@/components/shared/GameTrendChart";
-import { GameCompareChart } from "@/components/shared/GameCompareChart";
+import { GameTrendChart } from "@/components/game/GameTrendChart";
+import { GameCompareChart } from "@/components/game/GameCompareChart";
 import { DateRangePicker } from "@/components/shared/DateRangePicker";
+import { UnderlineTabs } from "../shared/UnderlineTabs";
 
 type Row = {
   date: string;
@@ -76,44 +77,10 @@ function SegmentedControl<T extends string>({
           style={
             opt.key === active ? { color: "var(--background)" } : undefined
           }
-          className="relative z-10 flex-1 whitespace-nowrap rounded-full px-5 py-1.5 text-sm font-medium text-white/45 transition-colors hover:text-white/75 data-[active=true]:text-inherit"
+          className="relative z-10 flex-1 whitespace-nowrap rounded-full px-5 py-1.5 text-sm font-medium  text-white/45 transition-colors hover:text-white/75 data-[active=true]:text-inherit"
           data-active={opt.key === active}
         >
           {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function UnderlineTabs<T extends string>({
-  options,
-  active,
-  onChange,
-}: {
-  options: readonly { label: string; key: T }[];
-  active: T;
-  onChange: (key: T) => void;
-}) {
-  return (
-    <div className="flex items-center gap-6 border-b border-white/10 pl-1">
-      {options.map((opt) => (
-        <button
-          key={opt.key}
-          onClick={() => onChange(opt.key)}
-          className={`relative whitespace-nowrap pb-2.5 text-sm font-medium transition-colors ${
-            opt.key === active
-              ? "text-white"
-              : "text-white/35 hover:text-white/60"
-          }`}
-        >
-          {opt.label}
-          {opt.key === active && (
-            <span
-              className="absolute inset-x-0 -bottom-px h-0.5 rounded-full"
-              style={{ background: "var(--chart-1)" }}
-            />
-          )}
         </button>
       ))}
     </div>

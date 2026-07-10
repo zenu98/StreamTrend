@@ -210,6 +210,10 @@
   }
   html {
     background-color: #0d1117;
+
     @apply font-sans;
+  }
+  main {
+    @apply max-w-7xl mx-auto;
   }
 }

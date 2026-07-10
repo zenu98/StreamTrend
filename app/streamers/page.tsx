@@ -1,4 +1,4 @@
-import { StreamerSearch } from "@/components/shared/StreamerSearch";
+import { StreamerSearch } from "@/components/streamer/StreamerSearch";
 
 export default function StreamersPage() {
   return (

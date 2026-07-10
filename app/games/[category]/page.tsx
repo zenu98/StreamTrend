@@ -3,17 +3,18 @@ import {
   getGameCategoryInfo,
   getGameLiveStats,
   getGameStats,
+  getGameTopStreamers,
 } from "@/lib/gameStats";
 import Image from "next/image";
-import { ChartLineLabel } from "@/components/ui/charts/chart-line-label";
-import { ChartRadialText } from "@/components/ui/charts/chart-radial-text";
-import Link from "next/link";
-import { getLives } from "@/lib/lives";
-import { getStatsByDate } from "@/lib/stats";
-import { GameCompareChart } from "@/components/shared/GameCompareChart";
-import { GameTrendChart } from "@/components/shared/GameTrendChart";
-import { GameChartTabs } from "@/components/shared/GameChartTabs";
+import { GameChartTabs } from "@/components/game/GameChartTabs";
 import { getAllCategories } from "@/lib/games";
+import { GameTopStreamers } from "@/components/game/GameTopStreamers";
+import { CurrentStatsStrip } from "@/components/shared/CurrentStatsStrip";
+
+import { AllTimeRecordCard } from "@/components/shared/AllTimeRecordCard";
+
+import { ViewerConcentrationSection } from "@/components/shared/ViewerConcentrationSection";
+import { toKSTDateString } from "@/lib/utils";
 
 export default function GameDetailPage({
   params,
@@ -37,15 +38,17 @@ async function GameDetail({
   const { category } = await paramsPromise;
   const categoryId = decodeURIComponent(category);
 
-  const [stats, liveStats, categoryInfo, allCategories] = await Promise.all([
-    getGameStats(categoryId),
-    getGameLiveStats(categoryId),
-    getGameCategoryInfo(categoryId),
-    getAllCategories(),
-  ]);
+  const [stats, liveStats, categoryInfo, allCategories, topStreamers] =
+    await Promise.all([
+      getGameStats(categoryId),
+      getGameLiveStats(categoryId),
+      getGameCategoryInfo(categoryId),
+      getAllCategories(),
+      getGameTopStreamers(categoryId),
+    ]);
 
   return (
-    <main className="p-4 md:p-8 space-y-8">
+    <main className="p-4 mx-auto w-full  space-y-8 ">
       {/* 헤더 */}
       <div className="flex items-center gap-4 md:gap-6">
         {categoryInfo?.posterImageUrl && (
@@ -67,97 +70,50 @@ async function GameDetail({
         </h1>
       </div>
 
-      {/* 현재 섹션 */}
       <section className="space-y-4">
         <h2 className="text-lg md:text-xl font-bold">현재</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <ChartRadialText
-            title="현재 시청자"
-            value={liveStats.currentViewers}
-            label="명"
-            tier={liveStats.viewerTier}
-          />
-          <ChartRadialText
-            title="현재 방송 수"
-            value={liveStats.currentCount}
-            label="개"
-            tier={liveStats.countTier}
-          />
-          {liveStats.currentMaxViewer && (
-            <Link href={`/streamers/${liveStats.currentMaxViewer.channelId}`}>
-              <div className="flex flex-col items-center justify-center gap-2 p-4 h-full rounded-lg border bg-card hover:border-primary transition-colors">
-                <p className="text-sm text-muted-foreground">
-                  현재 최고 시청자
-                </p>
-                {liveStats.currentMaxViewer.channelImageUrl && (
-                  <Image
-                    src={liveStats.currentMaxViewer.channelImageUrl}
-                    alt={liveStats.currentMaxViewer.channelName}
-                    width={48}
-                    height={48}
-                    className="rounded-full object-cover"
-                  />
-                )}
-                <p className="text-sm font-bold">
-                  {liveStats.currentMaxViewer.channelName}
-                </p>
-                <p className="text-sm ">
-                  {liveStats.currentMaxViewer.liveTitle}
-                </p>
-
-                <p className="text-xs text-muted-foreground">
-                  {liveStats.currentMaxViewer.concurrentUserCount.toLocaleString()}
-                  명
-                </p>
-              </div>
-            </Link>
-          )}
-        </div>
+        <CurrentStatsStrip
+          currentViewers={liveStats.currentViewers}
+          currentCount={liveStats.currentCount}
+          viewerTier={liveStats.viewerTier}
+          countTier={liveStats.countTier}
+          currentMaxViewer={liveStats.currentMaxViewer}
+        />
       </section>
 
-      {/* 역대 섹션 */}
-      <section className="space-y-4 ">
+      <section className="space-y-4">
         <h2 className="text-lg md:text-xl font-bold">역대</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <ChartRadialText
-            title="역대 최고 동시시청자"
-            value={stats.maxViewers}
-            tier={liveStats.viewerTier}
-          />
-          {stats.allTimeTopStreamer && (
-            <Link href={`/streamers/${stats.allTimeTopStreamer.channelId}`}>
-              <div className="flex flex-col items-center justify-center gap-2 p-4 h-full rounded-lg border bg-card hover:border-primary transition-colors">
-                <p className="text-sm text-muted-foreground">
-                  역대 최고 시청자
-                </p>
-                {stats.allTimeTopStreamer.channelImageUrl && (
-                  <Image
-                    src={stats.allTimeTopStreamer.channelImageUrl}
-                    alt={stats.allTimeTopStreamer.channelName}
-                    width={48}
-                    height={48}
-                    className="rounded-full object-cover"
-                  />
-                )}
-                <p className="text-sm font-bold">
-                  {stats.allTimeTopStreamer.channelName}
-                </p>
-                <p className="text-sm ">{stats.allTimeTopStreamer.liveTitle}</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats.allTimeTopStreamer.maxViewers.toLocaleString()}명
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(
-                    stats.allTimeTopStreamer.date.getTime() +
-                      9 * 60 * 60 * 1000,
-                  )
-                    .toISOString()
-                    .slice(0, 10)}
-                </p>
-              </div>
-            </Link>
-          )}
-        </div>
+        <AllTimeRecordCard
+          maxViewers={stats.maxViewers}
+          maxViewersDate={stats.maxViewersDate}
+        />
+      </section>
+
+      <section className="space-y-4">
+        <ViewerConcentrationSection
+          viewerPercentile={liveStats.viewerPercentile}
+          countPercentile={liveStats.countPercentile}
+          viewerRank={liveStats.viewerRank}
+          countRank={liveStats.countRank}
+          viewerTieCount={liveStats.viewerTieCount}
+          countTieCount={liveStats.countTieCount}
+          totalGames={liveStats.totalGames}
+          totalCountAll={liveStats.totalCountAll}
+          viewerShare={liveStats.viewerShare}
+          countShare={liveStats.countShare}
+          currentCount={liveStats.currentCount}
+          trendRows={stats.allRows}
+          currentViewers={liveStats.currentViewers}
+          todayLabel={toKSTDateString(new Date())}
+        />
+      </section>
+
+      {/* 역대 최고 시청자 랭킹 */}
+      <section className="space-y-4">
+        <GameTopStreamers
+          topRecords={topStreamers.topRecords}
+          topChannels={topStreamers.topChannels}
+        />
       </section>
 
       <section className="space-y-4 mt-24">

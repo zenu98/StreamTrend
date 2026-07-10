@@ -18,7 +18,7 @@ type Props = {
 
 export function TrendingStreamer({ streamers }: Props) {
   return (
-    <div className="space-y-0 mx-auto max-w-6xl px-4 md:px-0">
+    <section className="space-y-0 w-full px-4 md:px-0">
       <div className="text-center mt-8 md:mt-16 mb-4 md:mb-8">
         <h1 className="text-4xl md:text-6xl font-extrabold text-white">
           트렌딩 스트리머
@@ -116,6 +116,6 @@ export function TrendingStreamer({ streamers }: Props) {
           </Link>
         );
       })}
-    </div>
+    </section>
   );
 }

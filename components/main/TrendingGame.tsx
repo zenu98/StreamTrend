@@ -148,7 +148,7 @@ function PodiumItem({
 
 export function TrendingGame({ byConcurrent, byMax, byPeak }: Props) {
   const [active, setActive] = useState<"byConcurrent" | "byMax" | "byPeak">(
-    "byConcurrent",
+    "byMax",
   );
 
   const games =
@@ -165,7 +165,7 @@ export function TrendingGame({ byConcurrent, byMax, byPeak }: Props) {
   const podiumOrder = [top3[1], top3[0], top3[2]];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 px-4 md:px-0">
+    <section className=" space-y-6 px-4 md:px-0">
       <div className="text-center mt-8 md:mt-16 mb-4 md:mb-8">
         <h1 className="text-4xl md:text-6xl font-extrabold text-white">
           트렌딩 게임
@@ -277,6 +277,6 @@ export function TrendingGame({ byConcurrent, byMax, byPeak }: Props) {
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

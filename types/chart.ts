@@ -62,3 +62,11 @@ export type GamePeriodData = {
     data: GameDateData[];
   }[];
 };
+export type TopStreamerEntry = {
+  channelId: string;
+  channelName: string;
+  channelImageUrl: string | null;
+  maxViewers: number;
+  liveTitle: string;
+  date: string;
+};

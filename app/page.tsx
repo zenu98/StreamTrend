@@ -1,5 +1,5 @@
 import { LiveSection } from "@/components/shared/LiveSection";
-import { GameCompareChart } from "@/components/shared/GameCompareChart";
+import { GameCompareChart } from "@/components/game/GameCompareChart";
 import { StatsSection } from "@/components/shared/StatsSection";
 import {
   getStats,
@@ -9,8 +9,8 @@ import {
 } from "@/lib/stats";
 import { getLives } from "@/lib/lives";
 import { Suspense } from "react";
-import { TrendingGame } from "@/components/shared/TrendingGame";
-import { TrendingStreamer } from "@/components/shared/TrendingStreamer";
+import { TrendingGame } from "@/components/main/TrendingGame";
+import { TrendingStreamer } from "@/components/main/TrendingStreamer";
 
 export default function Home() {
   return (
@@ -48,14 +48,14 @@ async function HomeContent() {
 
   return (
     <>
-      <section className="space-y-32 ">
+      <main className="space-y-32 mx-auto">
         <TrendingGame
           byConcurrent={topGames.byConcurrent}
           byMax={topGames.byMax}
           byPeak={topGames.byPeak}
         />
         <TrendingStreamer streamers={topStreamers} />
-      </section>
+      </main>
       {/* <StatsSection
         daily={daily}
         weekly={weekly}

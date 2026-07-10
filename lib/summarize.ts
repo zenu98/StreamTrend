@@ -32,6 +32,17 @@ export async function summarizeYesterday(targetDate?: Date) {
 
   const snapshots = await prisma.liveSnapshot.findMany({
     where: { collectedAt: { gte: from, lt: to } },
+    select: {
+      collectedAt: true,
+      liveCategory: true,
+      liveCategoryValue: true,
+      categoryType: true,
+      concurrentUserCount: true,
+      channelId: true,
+      channelName: true,
+      channelImageUrl: true,
+      liveTitle: true,
+    },
   });
 
   if (snapshots.length === 0) {
@@ -159,17 +170,19 @@ export async function summarizeYesterday(targetDate?: Date) {
       liveTitle,
     };
   });
-
-  await prisma.$transaction([
-    prisma.dailySummary.createMany({ data: summaries, skipDuplicates: true }),
-    prisma.streamerDailySummary.createMany({
-      data: streamerSummaries,
-      skipDuplicates: true,
-    }),
-    prisma.liveSnapshot.deleteMany({
-      where: { collectedAt: { gte: from, lt: to } },
-    }),
-  ]);
+  await prisma.$transaction(
+    [
+      prisma.dailySummary.createMany({ data: summaries, skipDuplicates: true }),
+      prisma.streamerDailySummary.createMany({
+        data: streamerSummaries,
+        skipDuplicates: true,
+      }),
+      prisma.liveSnapshot.deleteMany({
+        where: { collectedAt: { gte: from, lt: to } },
+      }),
+    ],
+    { timeout: 60000 },
+  );
 
   return {
     success: true,

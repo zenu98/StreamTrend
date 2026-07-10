@@ -4,7 +4,7 @@ import { CategoryPieChart } from "@/components/ui/charts/chart-pie-legend";
 import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { Suspense } from "react";
 import { ChartBarLabel } from "@/components/ui/charts/bar-chart-label";
-import { StreamerDateFilter } from "@/components/shared/StreamerDataFilter";
+import { StreamerDateFilter } from "@/components/streamer/StreamerDataFilter";
 
 async function StreamerDetail({
   paramsPromise,
