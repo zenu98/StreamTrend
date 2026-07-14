@@ -99,19 +99,19 @@ export async function getLives() {
     collectedAt,
     byViewers: [...gameResultWithPoster]
       .sort((a, b) => b.totalViewers - a.totalViewers)
-      .slice(0, 13),
+      .slice(0, 11),
     byCount: [...gameResultWithPoster]
       .sort((a, b) => b.count - a.count)
-      .slice(0, 13),
+      .slice(0, 11),
     allGames: [...gameResultWithPoster].sort(
       (a, b) => b.totalViewers - a.totalViewers,
     ),
     sportsByViewers: [...sportsResult]
       .sort((a, b) => b.totalViewers - a.totalViewers)
-      .slice(0, 13),
+      .slice(0, 11),
     sportsByCount: [...sportsResult]
       .sort((a, b) => b.count - a.count)
-      .slice(0, 13),
+      .slice(0, 11),
     allGamesRaw: gameFiltered,
   };
 }

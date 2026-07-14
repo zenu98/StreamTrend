@@ -10,3 +10,12 @@ export function toKSTDateString(date: Date): string {
     .toISOString()
     .slice(5, 10);
 }
+
+export function formatDuration(tickCount: number, intervalMinutes = 5): string {
+  const totalMinutes = tickCount * intervalMinutes;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}분`;
+  if (minutes === 0) return `${hours}시간`;
+  return `${hours}시간 ${minutes}분`;
+}

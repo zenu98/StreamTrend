@@ -175,3 +175,90 @@ export async function getStreamerAllStats(channelId: string) {
     maxViewers: r.maxViewers,
   }));
 }
+export type StreamerTopRecordEntry = {
+  liveCategory: string;
+  liveCategoryValue: string;
+  posterImageUrl: string | null;
+  maxViewers: number;
+  liveTitle: string;
+  date: string;
+};
+
+function toKSTFullDateString(date: Date): string {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export async function getStreamerTopRecords(channelId: string) {
+  "use cache";
+  cacheLife("statsTime");
+
+  const topRecordsRaw = await prisma.streamerDailySummary.findMany({
+    where: { channelId },
+    orderBy: { maxViewers: "desc" },
+    take: 10,
+    select: {
+      liveCategory: true,
+      liveCategoryValue: true,
+      maxViewers: true,
+      liveTitle: true,
+      date: true,
+    },
+  });
+
+  // 게임별 최고 기록만 남긴 뒤 상위 10개
+  const topGamesRaw = await prisma.$queryRaw<
+    {
+      liveCategory: string;
+      liveCategoryValue: string;
+      maxViewers: number;
+      liveTitle: string;
+      date: Date;
+    }[]
+  >`
+    SELECT * FROM (
+      SELECT DISTINCT ON ("liveCategory")
+        "liveCategory", "liveCategoryValue", "maxViewers", "liveTitle", date
+      FROM "StreamerDailySummary"
+      WHERE "channelId" = ${channelId}
+      ORDER BY "liveCategory", "maxViewers" DESC
+    ) t
+    ORDER BY "maxViewers" DESC
+    LIMIT 10
+  `;
+
+  const categoryIds = [
+    ...new Set([
+      ...topRecordsRaw.map((r) => r.liveCategory),
+      ...topGamesRaw.map((r) => r.liveCategory),
+    ]),
+  ];
+  const categories = await prisma.category.findMany({
+    where: { categoryId: { in: categoryIds } },
+    select: { categoryId: true, posterImageUrl: true },
+  });
+  const posterMap = new Map(
+    categories.map((c) => [c.categoryId, c.posterImageUrl]),
+  );
+
+  const toEntry = (r: {
+    liveCategory: string;
+    liveCategoryValue: string;
+    maxViewers: number;
+    liveTitle: string;
+    date: Date;
+  }): StreamerTopRecordEntry => ({
+    liveCategory: r.liveCategory,
+    liveCategoryValue: r.liveCategoryValue,
+    posterImageUrl: posterMap.get(r.liveCategory) ?? null,
+    maxViewers: r.maxViewers,
+    liveTitle: r.liveTitle,
+    date: toKSTFullDateString(r.date),
+  });
+
+  return {
+    topRecords: topRecordsRaw.map(toEntry),
+    topGames: topGamesRaw.map(toEntry),
+  };
+}

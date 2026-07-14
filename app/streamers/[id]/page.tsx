@@ -1,10 +1,16 @@
-import { getStreamerAllStats, getStreamerStats } from "@/lib/streamerStats";
+import {
+  getStreamerAllStats,
+  getStreamerStats,
+  getStreamerTopRecords,
+} from "@/lib/streamerStats";
 import Image from "next/image";
 import { CategoryPieChart } from "@/components/ui/charts/chart-pie-legend";
 import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { Suspense } from "react";
 import { ChartBarLabel } from "@/components/ui/charts/bar-chart-label";
 import { StreamerDateFilter } from "@/components/streamer/StreamerDataFilter";
+import { StreamerTopRecords } from "@/components/streamer/StreamerTopRecords";
+import { StreamerGameDistribution } from "@/components/streamer/StreamerGameDistribution";
 
 async function StreamerDetail({
   paramsPromise,
@@ -12,9 +18,14 @@ async function StreamerDetail({
   paramsPromise: Promise<{ id: string }>;
 }) {
   const { id } = await paramsPromise;
-  const { today, weekly, monthly, channelInfo } = await getStreamerStats(id);
-  const allRows = await getStreamerAllStats(id);
-  console.log("today:", today);
+
+  const [{ today, weekly, monthly, channelInfo }, allRows, topRecordsData] =
+    await Promise.all([
+      getStreamerStats(id),
+      getStreamerAllStats(id),
+      getStreamerTopRecords(id),
+    ]);
+
   return (
     <main className="p-4 md:p-8 space-y-8">
       {/* 헤더 */}
@@ -36,6 +47,7 @@ async function StreamerDetail({
           {channelInfo?.channelName}
         </h1>
       </div>
+
       {/* 당일 */}
       <section className="space-y-4">
         <h2 className="text-lg md:text-xl font-bold">오늘</h2>
@@ -49,15 +61,23 @@ async function StreamerDetail({
               data={today}
               dataKey="avgViewers"
             />
-            <CategoryPieChart
-              title="방송 수"
-              description="게임별 방송 수"
-              data={today}
-              dataKey="count"
+            <StreamerGameDistribution
+              rows={today}
+              title="방송 비중"
+              description="게임별 방송 시간"
             />
           </div>
         )}
       </section>
+
+      {/* 역대 최고 시청자 기록 */}
+      <section className="space-y-4">
+        <StreamerTopRecords
+          topRecords={topRecordsData.topRecords}
+          topGames={topRecordsData.topGames}
+        />
+      </section>
+
       <StreamerDateFilter rows={allRows} />
     </main>
   );

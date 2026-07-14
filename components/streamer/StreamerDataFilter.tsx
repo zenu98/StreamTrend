@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import type { DateRange } from "react-day-picker";
 import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
-import { CategoryPieChart } from "@/components/ui/charts/chart-pie-legend";
+import { StreamerGameDistribution } from "./StreamerGameDistribution";
+import { DateRangePicker } from "@/components/shared/DateRangePicker";
 
 type Row = {
   date: string;
@@ -30,8 +32,7 @@ type PresetKey = (typeof presets)[number]["key"];
 
 export function StreamerDateFilter({ rows }: Props) {
   const [active, setActive] = useState<PresetKey | "custom">("weekly");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [showCustom, setShowCustom] = useState(false);
 
   const filtered = useMemo(() => {
@@ -65,11 +66,13 @@ export function StreamerDateFilter({ rows }: Props) {
     if (active === "all") {
       return rows;
     }
-    if (active === "custom" && startDate && endDate) {
-      return rows.filter((r) => r.date >= startDate && r.date <= endDate);
+    if (active === "custom" && customRange?.from && customRange?.to) {
+      const from = customRange.from.toISOString().slice(0, 10);
+      const to = customRange.to.toISOString().slice(0, 10);
+      return rows.filter((r) => r.date >= from && r.date <= to);
     }
     return rows;
-  }, [active, rows, startDate, endDate]);
+  }, [active, rows, customRange]);
 
   // 게임별 합산
   const gameMap = useMemo(() => {
@@ -146,26 +149,8 @@ export function StreamerDateFilter({ rows }: Props) {
 
       {/* 직접 선택 */}
       {showCustom && (
-        <div className="flex gap-3 items-center flex-wrap p-3 rounded-lg border bg-muted/50">
-          <div className="flex flex-col gap-1">
-            <p className="text-xs text-muted-foreground">시작일</p>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded-md px-2 py-1 text-sm bg-background"
-            />
-          </div>
-          <span className="text-muted-foreground mt-4">~</span>
-          <div className="flex flex-col gap-1">
-            <p className="text-xs text-muted-foreground">종료일</p>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded-md px-2 py-1 text-sm bg-background"
-            />
-          </div>
+        <div className="p-3 rounded-lg border bg-muted/50">
+          <DateRangePicker value={customRange} onChange={setCustomRange} />
         </div>
       )}
 
@@ -180,11 +165,10 @@ export function StreamerDateFilter({ rows }: Props) {
             data={gameMap}
             dataKey="avgViewers"
           />
-          <CategoryPieChart
+          <StreamerGameDistribution
+            rows={gameMap}
             title="방송 비중"
             description="게임별 방송 비중"
-            data={gameMap}
-            dataKey="count"
           />
         </div>
       )}
