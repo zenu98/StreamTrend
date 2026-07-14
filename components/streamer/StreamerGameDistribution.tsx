@@ -44,7 +44,7 @@ export function StreamerGameDistribution({
                     {formatDuration(row.count)} · {percent}%
                   </span>
                 </div>
-                <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-4 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{ width: `${filled}%`, background: color }}

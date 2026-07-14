@@ -5,6 +5,7 @@ export type BaseCategoryData = {
   totalViewers: number;
   avgViewers: number;
   concurrentViewers: number;
+  maxViewers?: number;
   posterImageUrl?: string | null;
   categoryId: string;
 };

@@ -4,14 +4,38 @@ import {
   getStreamerTopRecords,
 } from "@/lib/streamerStats";
 import Image from "next/image";
-import { CategoryPieChart } from "@/components/ui/charts/chart-pie-legend";
-import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { Suspense } from "react";
-import { ChartBarLabel } from "@/components/ui/charts/bar-chart-label";
 import { StreamerDateFilter } from "@/components/streamer/StreamerDataFilter";
 import { StreamerTopRecords } from "@/components/streamer/StreamerTopRecords";
-import { StreamerGameDistribution } from "@/components/streamer/StreamerGameDistribution";
+import type { Metadata } from "next";
+import { getStreamerBasicInfo } from "@/lib/streamerStats";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const info = await getStreamerBasicInfo(id);
+
+  if (!info) return {};
+
+  const title = `${info.channelName} 방송 통계`;
+  const description = `${info.channelName}님의 실시간 시청자, 게임별 방송 비중, 역대 최고 기록을 확인하세요.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: info.channelImageUrl ? [info.channelImageUrl] : undefined,
+    },
+    alternates: {
+      canonical: `/streamers/${id}`,
+    },
+  };
+}
 async function StreamerDetail({
   paramsPromise,
 }: {
@@ -19,12 +43,11 @@ async function StreamerDetail({
 }) {
   const { id } = await paramsPromise;
 
-  const [{ today, weekly, monthly, channelInfo }, allRows, topRecordsData] =
-    await Promise.all([
-      getStreamerStats(id),
-      getStreamerAllStats(id),
-      getStreamerTopRecords(id),
-    ]);
+  const [{ today, channelInfo }, allRows, topRecordsData] = await Promise.all([
+    getStreamerStats(id),
+    getStreamerAllStats(id),
+    getStreamerTopRecords(id),
+  ]);
 
   return (
     <main className="p-4 md:p-8 space-y-8">
@@ -48,26 +71,10 @@ async function StreamerDetail({
         </h1>
       </div>
 
-      {/* 당일 */}
+      {/* 통계 (실시간 기본 선택) */}
       <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">오늘</h2>
-        {today.length === 0 ? (
-          <p className="text-sm text-muted-foreground">데이터 없음</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
-            <ChartBarLabel
-              title="시청자 수"
-              description="게임별 시청자 수"
-              data={today}
-              dataKey="avgViewers"
-            />
-            <StreamerGameDistribution
-              rows={today}
-              title="방송 비중"
-              description="게임별 방송 시간"
-            />
-          </div>
-        )}
+        <h2 className="text-lg md:text-xl font-bold">통계</h2>
+        <StreamerDateFilter rows={allRows} todayRows={today} />
       </section>
 
       {/* 역대 최고 시청자 기록 */}
@@ -77,8 +84,6 @@ async function StreamerDetail({
           topGames={topRecordsData.topGames}
         />
       </section>
-
-      <StreamerDateFilter rows={allRows} />
     </main>
   );
 }
@@ -88,11 +93,5 @@ export default function StreamerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  return (
-    <Suspense
-      fallback={<div className="p-8 text-muted-foreground">로딩 중...</div>}
-    >
-      <StreamerDetail paramsPromise={params} />
-    </Suspense>
-  );
+  return <StreamerDetail paramsPromise={params} />;
 }

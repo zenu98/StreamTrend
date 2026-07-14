@@ -197,7 +197,7 @@ export async function getStreamerTopRecords(channelId: string) {
   const topRecordsRaw = await prisma.streamerDailySummary.findMany({
     where: { channelId },
     orderBy: { maxViewers: "desc" },
-    take: 10,
+    take: 50,
     select: {
       liveCategory: true,
       liveCategoryValue: true,
@@ -225,7 +225,7 @@ export async function getStreamerTopRecords(channelId: string) {
       ORDER BY "liveCategory", "maxViewers" DESC
     ) t
     ORDER BY "maxViewers" DESC
-    LIMIT 10
+    LIMIT 50
   `;
 
   const categoryIds = [
@@ -261,4 +261,13 @@ export async function getStreamerTopRecords(channelId: string) {
     topRecords: topRecordsRaw.map(toEntry),
     topGames: topGamesRaw.map(toEntry),
   };
+}
+
+export async function getStreamerBasicInfo(channelId: string) {
+  "use cache";
+  cacheLife("statsTime");
+  return prisma.streamer.findUnique({
+    where: { channelId },
+    select: { channelName: true, channelImageUrl: true },
+  });
 }

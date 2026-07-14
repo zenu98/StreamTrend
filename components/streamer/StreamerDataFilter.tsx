@@ -2,9 +2,12 @@
 
 import { useState, useMemo } from "react";
 import type { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { CalendarDays } from "lucide-react";
 import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { StreamerGameDistribution } from "./StreamerGameDistribution";
 import { DateRangePicker } from "@/components/shared/DateRangePicker";
+import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
 
 type Row = {
   date: string;
@@ -17,11 +20,22 @@ type Row = {
   maxViewers: number;
 };
 
+type TodayRow = {
+  category: string;
+  categoryId: string;
+  totalViewers: number;
+  count: number;
+  avgViewers: number;
+  concurrentViewers: number;
+};
+
 type Props = {
   rows: Row[];
+  todayRows: TodayRow[];
 };
 
 const presets = [
+  { label: "실시간", key: "live" },
   { label: "어제", key: "yesterday" },
   { label: "7일", key: "weekly" },
   { label: "30일", key: "monthly" },
@@ -30,12 +44,18 @@ const presets = [
 
 type PresetKey = (typeof presets)[number]["key"];
 
-export function StreamerDateFilter({ rows }: Props) {
-  const [active, setActive] = useState<PresetKey | "custom">("weekly");
+const liveMetricTabs = [{ label: "실시간 시청자", key: "live" as const }];
+const avgMetricTabs = [{ label: "평균 시청자", key: "avgViewers" as const }];
+
+export function StreamerDateFilter({ rows, todayRows }: Props) {
+  const [active, setActive] = useState<PresetKey | "custom">("live");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
-  const [showCustom, setShowCustom] = useState(false);
+
+  const isLive = active === "live";
 
   const filtered = useMemo(() => {
+    if (active === "live") return [];
+
     const today = new Date();
     const kstToday = new Date(today.getTime() + 9 * 60 * 60 * 1000)
       .toISOString()
@@ -74,8 +94,20 @@ export function StreamerDateFilter({ rows }: Props) {
     return rows;
   }, [active, rows, customRange]);
 
-  // 게임별 합산
   const gameMap = useMemo(() => {
+    if (isLive) {
+      return [...todayRows]
+        .map((d) => ({
+          category: d.category,
+          categoryId: d.categoryId,
+          totalViewers: d.totalViewers,
+          count: d.count,
+          avgViewers: d.avgViewers,
+          concurrentViewers: d.concurrentViewers,
+        }))
+        .sort((a, b) => b.totalViewers - a.totalViewers);
+    }
+
     const map = new Map<
       string,
       {
@@ -104,55 +136,85 @@ export function StreamerDateFilter({ rows }: Props) {
         categoryId: d.liveCategory,
         totalViewers: d.totalViewers,
         count: d.broadcastCount,
-        avgViewers: Math.round(d.totalViewers / d.broadcastCount),
-        concurrentViewers: Math.round(d.totalViewers / d.broadcastCount),
-        maxViewers: 0,
-        peakViewers: 0,
+        avgViewers:
+          d.broadcastCount > 0
+            ? Math.round(d.totalViewers / d.broadcastCount)
+            : 0,
+        concurrentViewers:
+          d.broadcastCount > 0
+            ? Math.round(d.totalViewers / d.broadcastCount)
+            : 0,
       }))
-      .sort((a, b) => b.totalViewers - a.totalViewers);
-  }, [filtered]);
+      .sort((a, b) => b.avgViewers - a.avgViewers);
+  }, [isLive, filtered, todayRows]);
+
+  const getBadgeLabel = () => {
+    if (active === "live") return "실시간";
+    if (active === "yesterday") return "어제";
+    if (active === "weekly") return "최근 7일";
+    if (active === "monthly") return "최근 30일";
+    if (active === "all") return "전체 기간";
+    if (active === "custom" && customRange?.from && customRange?.to) {
+      return `${format(customRange.from, "MM.dd")} ~ ${format(customRange.to, "MM.dd")}`;
+    }
+    return "기간 선택";
+  };
 
   return (
     <div className="space-y-4">
-      {/* 탭 */}
-      <div className="flex gap-2 flex-wrap">
-        {presets.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => {
-              setActive(tab.key);
-              setShowCustom(false);
-            }}
-            className={`px-4 py-1.5 rounded-full text-sm border transition-colors ${
-              active === tab.key
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border text-muted-foreground"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-        <button
-          onClick={() => {
-            setActive("custom");
-            setShowCustom((prev) => !prev);
-          }}
-          className={`px-4 py-1.5 rounded-full text-sm border transition-colors flex items-center gap-1 ${
-            active === "custom"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-background border-border text-muted-foreground"
-          }`}
-        >
-          직접 선택
-        </button>
-      </div>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <UnderlineTabs
+          options={isLive ? liveMetricTabs : avgMetricTabs}
+          active={isLive ? "live" : "avgViewers"}
+          onChange={() => {}}
+        />
 
-      {/* 직접 선택 */}
-      {showCustom && (
-        <div className="p-3 rounded-lg border bg-muted/50">
-          <DateRangePicker value={customRange} onChange={setCustomRange} />
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1.5">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 text-sm font-semibold text-white">
+            <CalendarDays className="h-4 w-4 shrink-0 text-white/40" />
+            {getBadgeLabel()}
+          </div>
+
+          <div className="h-5 w-px bg-white/10" />
+
+          <div className="flex items-center gap-0.5">
+            {presets.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setActive(p.key)}
+                className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
+                style={
+                  active === p.key
+                    ? {
+                        background:
+                          "color-mix(in oklch, var(--chart-1), transparent 85%)",
+                        color: "var(--chart-1)",
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  className={
+                    active === p.key ? "" : "text-white/40 hover:text-white/70"
+                  }
+                >
+                  {p.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="h-5 w-px bg-white/10" />
+
+          <DateRangePicker
+            value={customRange}
+            onChange={(range) => {
+              setCustomRange(range);
+              setActive("custom");
+            }}
+          />
         </div>
-      )}
+      </div>
 
       {/* 차트 */}
       {gameMap.length === 0 ? (
@@ -160,8 +222,10 @@ export function StreamerDateFilter({ rows }: Props) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChartBarMixed
-            title="시청자 수"
-            description="게임별 시청자 수"
+            title={isLive ? "실시간 시청자" : "평균 시청자"}
+            description={
+              isLive ? "게임별 현재 시청자 수" : "게임별 평균 시청자 수"
+            }
             data={gameMap}
             dataKey="avgViewers"
           />

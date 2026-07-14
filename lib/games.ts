@@ -8,20 +8,7 @@ export async function getGameCategories() {
   cacheLife("statsTime");
 
   const lives = await getLives();
-
-  const categoryIds = lives.allGames.map((g) => g.categoryId);
-  const categories = await prisma.category.findMany({
-    where: { categoryId: { in: categoryIds } },
-  });
-
-  const posterMap = new Map(
-    categories.map((c) => [c.categoryId, c.posterImageUrl]),
-  );
-
-  return lives.allGames.map((game) => ({
-    ...game,
-    posterImageUrl: posterMap.get(game.categoryId) ?? null,
-  }));
+  return lives.allGames;
 }
 
 // 카테고리 테이블에 있는 게임들 다 가져오기

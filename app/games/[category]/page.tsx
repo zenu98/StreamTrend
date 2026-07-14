@@ -15,19 +15,43 @@ import { AllTimeRecordCard } from "@/components/shared/AllTimeRecordCard";
 
 import { ViewerConcentrationSection } from "@/components/shared/ViewerConcentrationSection";
 import { toKSTDateString } from "@/lib/utils";
+import type { Metadata } from "next";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ category: string }>;
+}): Promise<Metadata> {
+  const { category } = await params;
+  const categoryId = decodeURIComponent(category);
+  const categoryInfo = await getGameCategoryInfo(categoryId);
+
+  if (!categoryInfo) return {};
+
+  const title = `${categoryInfo.categoryValue} 실시간 시청자 순위`;
+  const description = `치지직 ${categoryInfo.categoryValue} 카테고리의 실시간 시청자 수, 방송 수, 역대 최고 기록을 확인하세요.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: categoryInfo.posterImageUrl
+        ? [categoryInfo.posterImageUrl]
+        : undefined,
+    },
+    alternates: {
+      canonical: `/games/${encodeURIComponent(categoryId)}`,
+    },
+  };
+}
 export default function GameDetailPage({
   params,
 }: {
   params: Promise<{ category: string }>;
 }) {
-  return (
-    <Suspense
-      fallback={<div className="p-8 text-muted-foreground">로딩 중...</div>}
-    >
-      <GameDetail paramsPromise={params} />
-    </Suspense>
-  );
+  return <GameDetail paramsPromise={params} />;
 }
 
 async function GameDetail({

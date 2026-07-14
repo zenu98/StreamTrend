@@ -1,4 +1,5 @@
 "use client";
+import { useMemo } from "react";
 import { Bar, BarChart, XAxis, YAxis, LabelList } from "recharts";
 import {
   Card,
@@ -23,6 +24,20 @@ type Props<T extends BaseCategoryData> = {
   valueLabel?: string;
 };
 
+let measureCanvas: HTMLCanvasElement | null = null;
+
+function measureTextWidth(text: string, font: string): number {
+  if (typeof document === "undefined") {
+    // 서버 렌더링 시점엔 canvas가 없어서 넉넉하게 추정 (클라이언트 하이드레이션 후 정확히 재계산됨)
+    return text.length * 14;
+  }
+  if (!measureCanvas) measureCanvas = document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d");
+  if (!ctx) return text.length * 14;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
+
 export function ChartBarMixed<T extends BaseCategoryData>({
   title,
   description,
@@ -30,20 +45,19 @@ export function ChartBarMixed<T extends BaseCategoryData>({
   dataKey,
   valueLabel = "value",
 }: Props<T>) {
+  const BAR_SIZE = 30;
+  const BAR_GAP = 16;
   const chartData = buildChartData(data, dataKey as keyof BaseCategoryData);
   const chartConfig = {
     ...buildChartConfig(data),
     value: { label: valueLabel },
   };
-  const yAxisWidth =
-    Math.max(
-      ...data.map((d) => {
-        const label =
-          (chartConfig[d.category as keyof typeof chartConfig]
-            ?.label as string) ?? "";
-        return Math.max(...label.split("\n").map((line) => line.length));
-      }),
-    ) * 10;
+
+  const yAxisWidth = useMemo(() => {
+    const font = "12px sans-serif";
+    const widths = data.map((d) => measureTextWidth(String(d.category), font));
+    return Math.max(...widths, 40) + 16; // 실측 최대값 + 여유 패딩
+  }, [data]);
 
   return (
     <Card>
@@ -55,15 +69,22 @@ export function ChartBarMixed<T extends BaseCategoryData>({
         <ChartContainer
           config={chartConfig}
           className="w-full"
-          style={{ height: `${data.length * 45}px` }}
+          style={{
+            height: `${64 + data.length * (BAR_SIZE + BAR_GAP)}px`,
+          }}
         >
-          <BarChart data={chartData} layout="vertical" margin={{ left: 0 }}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 8, bottom: 8, left: 0 }}
+          >
             <YAxis
               dataKey="category"
               width={yAxisWidth}
               type="category"
               tickLine={false}
               tickMargin={0}
+              interval={0}
               axisLine={false}
               tick={({ y, payload }) => (
                 <text
@@ -72,12 +93,9 @@ export function ChartBarMixed<T extends BaseCategoryData>({
                   textAnchor="start"
                   dominantBaseline="middle"
                   fontSize={12}
-                  fill="#666"
+                  fill="#fff"
                 >
-                  {
-                    chartConfig[payload.value as keyof typeof chartConfig]
-                      ?.label as string
-                  }
+                  {payload.value}
                 </text>
               )}
             />
@@ -86,13 +104,13 @@ export function ChartBarMixed<T extends BaseCategoryData>({
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
-            <Bar dataKey="value" radius={5}>
+            <Bar dataKey="value" radius={5} barSize={BAR_SIZE}>
               <LabelList
                 dataKey="value"
                 content={({ x, y, width, height, value }) => {
                   const numValue = typeof value === "number" ? value : 0;
                   const text = numValue.toLocaleString();
-                  const textWidth = text.length * 7; // 글자당 약 7px
+                  const textWidth = text.length * 7;
                   const insideRight = (width as number) > textWidth + 16;
 
                   return (

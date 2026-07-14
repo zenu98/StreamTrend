@@ -21,6 +21,7 @@ const medalStyle: Record<number, { bg: string; text: string }> = {
   2: { bg: "bg-zinc-300/15", text: "text-zinc-200" },
   3: { bg: "bg-orange-500/15", text: "text-orange-300" },
 };
+const PAGE_SIZE = 10;
 
 function RankBadge({ rank }: { rank: number }) {
   const style = medalStyle[rank];
@@ -37,58 +38,82 @@ function RankBadge({ rank }: { rank: number }) {
 
 export function StreamerTopRecords({ topRecords, topGames }: Props) {
   const [active, setActive] = useState<"records" | "games">("records");
-  const list = active === "records" ? topRecords : topGames;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const fullList = active === "records" ? topRecords : topGames;
+  const list = fullList.slice(0, visibleCount);
+  const hasMore = visibleCount < fullList.length;
+
+  const handleTabChange = (key: "records" | "games") => {
+    setActive(key);
+    setVisibleCount(PAGE_SIZE); // 탭 바꾸면 다시 10개부터
+  };
 
   return (
     <div className="space-y-4">
       <h2 className="text-lg md:text-xl font-bold">역대 최고 시청자 기록</h2>
 
-      <UnderlineTabs options={tabs} active={active} onChange={setActive} />
+      <UnderlineTabs
+        options={tabs}
+        active={active}
+        onChange={handleTabChange}
+      />
 
       {list.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
-        <div className="divide-y rounded-lg border bg-card">
-          {list.map((entry, i) => (
-            <Link
-              key={`${entry.liveCategory}-${i}`}
-              href={`/games/${encodeURIComponent(entry.liveCategory)}`}
-              className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
-            >
-              <RankBadge rank={i + 1} />
+        <>
+          <div className="divide-y rounded-lg border bg-card">
+            {list.map((entry, i) => (
+              <Link
+                key={`${entry.liveCategory}-${i}`}
+                href={`/games/${encodeURIComponent(entry.liveCategory)}`}
+                className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+              >
+                <RankBadge rank={i + 1} />
 
-              {entry.posterImageUrl ? (
-                <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded">
-                  <Image
-                    src={entry.posterImageUrl}
-                    alt={entry.liveCategoryValue}
-                    fill
-                    className="object-cover"
-                    sizes="40px"
-                  />
+                {entry.posterImageUrl ? (
+                  <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={entry.posterImageUrl}
+                      alt={entry.liveCategoryValue}
+                      fill
+                      className="object-cover"
+                      sizes="40px"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-14 w-10 shrink-0 rounded bg-muted" />
+                )}
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {entry.liveCategoryValue}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {entry.liveTitle}
+                  </p>
                 </div>
-              ) : (
-                <div className="h-14 w-10 shrink-0 rounded bg-muted" />
-              )}
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">
-                  {entry.liveCategoryValue}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {entry.liveTitle}
-                </p>
-              </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-bold">
+                    {entry.maxViewers.toLocaleString()}명
+                  </p>
+                  <p className="text-xs text-muted-foreground">{entry.date}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
 
-              <div className="shrink-0 text-right">
-                <p className="text-sm font-bold">
-                  {entry.maxViewers.toLocaleString()}명
-                </p>
-                <p className="text-xs text-muted-foreground">{entry.date}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+              className="w-full rounded-lg border py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+              더보기
+            </button>
+          )}
+        </>
       )}
     </div>
   );

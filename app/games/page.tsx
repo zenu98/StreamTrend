@@ -5,13 +5,7 @@ import { Info } from "lucide-react";
 import { Suspense } from "react";
 
 export default function GamesPage() {
-  return (
-    <Suspense
-      fallback={<div className="p-8 text-muted-foreground">로딩 중...</div>}
-    >
-      <GamesContent />
-    </Suspense>
-  );
+  return <GamesContent />;
 }
 
 async function GamesContent() {
