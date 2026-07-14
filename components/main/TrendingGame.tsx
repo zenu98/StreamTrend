@@ -165,9 +165,6 @@ function PodiumItem({
           </div>
         </div>
       </div>
-      <p className="text-xs md:text-sm font-medium text-center max-w-[80px] md:max-w-[90px] truncate text-white/70">
-        {game.category}
-      </p>
     </div>
   );
 }
