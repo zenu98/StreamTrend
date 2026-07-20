@@ -34,7 +34,7 @@ async function HomeContent() {
   const livePromise = getLiveGamesData();
 
   return (
-    <div className="space-y-32 max-w-6xl mx-auto">
+    <div className="space-y-32 max-w-6xl 2xl:max-w-7xl  mx-auto">
       <TrendingGame
         livePromise={livePromise}
         byMax={topGames.byMax}

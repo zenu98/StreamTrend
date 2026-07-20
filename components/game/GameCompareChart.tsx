@@ -221,8 +221,8 @@ export function GameCompareChart({
                   <ChartTooltipContent
                     indicator="line"
                     formatter={(value, name) => [
-                      `${Number(value).toLocaleString()}명`,
                       String(name),
+                      `: ${Number(value).toLocaleString()}명`,
                     ]}
                   />
                 }
@@ -236,7 +236,8 @@ export function GameCompareChart({
                   fillOpacity={0.2}
                   stroke={COLORS[i % COLORS.length]}
                   strokeWidth={2}
-                  dot={{ fill: COLORS[i % COLORS.length], r: 3 }}
+                  // dot={{ fill: COLORS[i % COLORS.length], r: 3 }}
+                  dot={false}
                   activeDot={{ r: 5 }}
                 />
               ))}
