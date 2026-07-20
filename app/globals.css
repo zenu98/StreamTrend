@@ -231,3 +231,8 @@
     --text-6xl: 4.25rem; /* 68px, 기존 60px */
   }
 }
+.recharts-wrapper:focus,
+.recharts-wrapper *:focus,
+.recharts-surface:focus {
+  outline: none;
+}
