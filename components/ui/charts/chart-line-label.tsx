@@ -92,10 +92,11 @@ export function ChartLineLabel({
               />
               <Line
                 dataKey="value"
-                type="natural"
+                type="monotone"
                 stroke="var(--color-value)"
                 strokeWidth={2}
-                dot={{ fill: "var(--color-value)", r: 3 }}
+                // dot={{ fill: "var(--color-value)", r: 3 }}
+                dot={false}
                 activeDot={{ r: 6 }}
               ></Line>
             </LineChart>
