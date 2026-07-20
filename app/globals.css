@@ -217,3 +217,17 @@
     @apply max-w-7xl mx-auto w-full;
   }
 }
+@media (min-width: 1024px) {
+  :root {
+    --text-xs: 0.8125rem; /* 13px, 기존 12px */
+    --text-sm: 1rem; /* 16px, 기존 14px */
+    --text-base: 1.125rem; /* 18px, 기존 16px */
+    --text-lg: 1.25rem; /* 20px, 기존 18px */
+    --text-xl: 1.375rem; /* 22px, 기존 20px */
+    --text-2xl: 1.75rem; /* 28px, 기존 24px */
+    --text-3xl: 2.25rem; /* 36px, 기존 30px */
+    --text-4xl: 2.75rem; /* 44px, 기존 36px */
+    --text-5xl: 3.5rem; /* 56px, 기존 48px */
+    --text-6xl: 4.25rem; /* 68px, 기존 60px */
+  }
+}
