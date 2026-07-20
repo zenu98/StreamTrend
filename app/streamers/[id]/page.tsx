@@ -55,7 +55,7 @@ async function StreamerDetail({
     ]);
 
   return (
-    <main className="p-4 md:p-8 space-y-8">
+    <main className="p-4 md:p-8 space-y-8 ">
       {/* 헤더 */}
 
       <div className="flex items-center gap-4">

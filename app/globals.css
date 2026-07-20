@@ -213,7 +213,7 @@
 
     @apply font-sans;
   }
-  /* main {
-    @apply max-w-7xl mx-auto;
-  } */
+  main {
+    @apply max-w-7xl mx-auto w-full;
+  }
 }

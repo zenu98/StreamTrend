@@ -12,7 +12,7 @@ async function GamesContent() {
   const games = await getGameCategories();
 
   return (
-    <main className="mx-auto space-y-6 p-8">
+    <main className=" mx-auto space-y-6 p-8">
       <div className="w-full border border-white/10 rounded-lg p-4 bg-white/5 text-sm space-y-2">
         <div className="font-semibold flex items-center text-white/50 gap-1">
           <Info className="w-4 h-4" />

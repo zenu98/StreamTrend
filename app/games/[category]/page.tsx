@@ -72,7 +72,7 @@ async function GameDetail({
     ]);
 
   return (
-    <main className="p-4 mx-auto w-full  space-y-8 ">
+    <main className="p-4  mx-auto w-full  space-y-8 ">
       {/* 헤더 */}
       <div className="flex items-center gap-4 md:gap-6">
         {categoryInfo?.posterImageUrl && (

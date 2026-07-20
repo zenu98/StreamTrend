@@ -176,10 +176,10 @@ export async function getStreamerAllStats(channelId: string) {
     maxViewers: r.maxViewers,
   }));
 
-  console.log(
-    "getStreamerAllStats 결과:",
-    result.map((r) => ({ date: r.date, category: r.liveCategoryValue })),
-  );
+  // console.log(
+  //   "getStreamerAllStats 결과:",
+  //   result.map((r) => ({ date: r.date, category: r.liveCategoryValue })),
+  // );
 
   return result;
 }
