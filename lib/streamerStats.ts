@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
+import { toKSTDateString } from "./utils";
 
 export async function getStreamerStats(channelId: string) {
   "use cache";
@@ -162,7 +163,7 @@ export async function getStreamerAllStats(channelId: string) {
     orderBy: { date: "asc" },
   });
 
-  return rows.map((r) => ({
+  const result = rows.map((r) => ({
     date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10),
@@ -174,7 +175,15 @@ export async function getStreamerAllStats(channelId: string) {
     avgViewers: r.avgViewers,
     maxViewers: r.maxViewers,
   }));
+
+  console.log(
+    "getStreamerAllStats 결과:",
+    result.map((r) => ({ date: r.date, category: r.liveCategoryValue })),
+  );
+
+  return result;
 }
+
 export type StreamerTopRecordEntry = {
   liveCategory: string;
   liveCategoryValue: string;
@@ -270,4 +279,110 @@ export async function getStreamerBasicInfo(channelId: string) {
     where: { channelId },
     select: { channelName: true, channelImageUrl: true },
   });
+}
+export type StreamerTrendGameBreakdown = {
+  category: string;
+  concurrentViewers: number;
+  broadcastCount: number;
+  liveTitle: string;
+  maxViewers: number;
+};
+
+export type StreamerTrendRow = {
+  date: string; // "YYYY-MM-DD"
+  displayDate: string; // "MM-DD"
+  totalViewers: number;
+  concurrentViewers: number;
+  broadcastCount: number;
+  maxViewers: number;
+  gameBreakdown: StreamerTrendGameBreakdown[];
+};
+
+export async function getStreamerTrend(
+  channelId: string,
+): Promise<StreamerTrendRow[]> {
+  "use cache";
+  cacheLife("statsTime");
+
+  const rows = await prisma.streamerDailySummary.findMany({
+    where: { channelId },
+    orderBy: { date: "asc" },
+  });
+
+  const map = new Map<
+    string,
+    {
+      totalViewers: number;
+      broadcastCount: number;
+      maxViewers: number;
+      games: Map<
+        string,
+        {
+          category: string;
+          totalViewers: number;
+          broadcastCount: number;
+          maxViewers: number;
+          liveTitle: string;
+        }
+      >;
+    }
+  >();
+
+  for (const r of rows) {
+    const kstDate = new Date(r.date.getTime() + 9 * 60 * 60 * 1000);
+    const key = kstDate.toISOString().slice(0, 10);
+    const prev = map.get(key) ?? {
+      totalViewers: 0,
+      broadcastCount: 0,
+      maxViewers: 0,
+      games: new Map(),
+    };
+
+    const prevGame = prev.games.get(r.liveCategory) ?? {
+      category: r.liveCategoryValue,
+      totalViewers: 0,
+      broadcastCount: 0,
+      maxViewers: 0,
+      liveTitle: r.liveTitle,
+    };
+    prev.games.set(r.liveCategory, {
+      category: r.liveCategoryValue,
+      totalViewers: prevGame.totalViewers + r.totalViewers,
+      broadcastCount: prevGame.broadcastCount + r.broadcastCount,
+      maxViewers: Math.max(prevGame.maxViewers, r.maxViewers),
+      liveTitle: r.liveTitle,
+    });
+
+    map.set(key, {
+      totalViewers: prev.totalViewers + r.totalViewers,
+      broadcastCount: prev.broadcastCount + r.broadcastCount,
+      maxViewers: Math.max(prev.maxViewers, r.maxViewers),
+      games: prev.games,
+    });
+  }
+  return Array.from(map.entries())
+    .sort(([a], [b]) => (a > b ? 1 : a < b ? -1 : 0))
+    .map(([date, v]) => ({
+      date,
+      displayDate: date.slice(5),
+      totalViewers: v.totalViewers,
+      concurrentViewers:
+        v.broadcastCount > 0
+          ? Math.round(v.totalViewers / v.broadcastCount)
+          : 0,
+      broadcastCount: v.broadcastCount,
+      maxViewers: v.maxViewers,
+      gameBreakdown: Array.from(v.games.values())
+        .map((g) => ({
+          category: g.category,
+          concurrentViewers:
+            g.broadcastCount > 0
+              ? Math.round(g.totalViewers / g.broadcastCount)
+              : 0,
+          maxViewers: g.maxViewers,
+          broadcastCount: g.broadcastCount,
+          liveTitle: g.liveTitle,
+        }))
+        .sort((a, b) => b.concurrentViewers - a.concurrentViewers),
+    }));
 }

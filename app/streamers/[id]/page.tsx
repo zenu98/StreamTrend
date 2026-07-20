@@ -2,6 +2,7 @@ import {
   getStreamerAllStats,
   getStreamerStats,
   getStreamerTopRecords,
+  getStreamerTrend,
 } from "@/lib/streamerStats";
 import Image from "next/image";
 import { Suspense } from "react";
@@ -9,6 +10,8 @@ import { StreamerDateFilter } from "@/components/streamer/StreamerDataFilter";
 import { StreamerTopRecords } from "@/components/streamer/StreamerTopRecords";
 import type { Metadata } from "next";
 import { getStreamerBasicInfo } from "@/lib/streamerStats";
+import { StreamerTrendChart } from "@/components/streamer/StreamerTrendChart";
+import { StreamerCurrentStats } from "@/components/streamer/StreamerCurrentStats";
 
 export async function generateMetadata({
   params,
@@ -43,24 +46,33 @@ async function StreamerDetail({
 }) {
   const { id } = await paramsPromise;
 
-  const [{ today, channelInfo }, allRows, topRecordsData] = await Promise.all([
-    getStreamerStats(id),
-    getStreamerAllStats(id),
-    getStreamerTopRecords(id),
-  ]);
+  const [{ today, channelInfo }, allRows, topRecordsData, trendRows] =
+    await Promise.all([
+      getStreamerStats(id),
+      getStreamerAllStats(id),
+      getStreamerTopRecords(id),
+      getStreamerTrend(id),
+    ]);
 
   return (
     <main className="p-4 md:p-8 space-y-8">
       {/* 헤더 */}
+
       <div className="flex items-center gap-4">
         {channelInfo?.channelImageUrl ? (
-          <Image
-            src={channelInfo.channelImageUrl}
-            alt={channelInfo.channelName}
-            width={64}
-            height={64}
-            className="rounded-full object-cover"
-          />
+          <a
+            href={`https://chzzk.naver.com/live/${id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Image
+              src={channelInfo.channelImageUrl}
+              alt={channelInfo.channelName}
+              width={64}
+              height={64}
+              className="rounded-full object-cover"
+            />
+          </a>
         ) : (
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-xl">
             {channelInfo?.channelName[0]}
@@ -70,11 +82,23 @@ async function StreamerDetail({
           {channelInfo?.channelName}
         </h1>
       </div>
-
+      <section className="space-y-4">
+        <StreamerCurrentStats
+          todayGames={today.map((d) => ({
+            category: d.category,
+            categoryId: d.categoryId,
+            count: d.count,
+            totalViewers: d.totalViewers,
+          }))}
+        />
+      </section>
+      <section className="space-y-4">
+        <StreamerTrendChart trendRows={trendRows} />
+      </section>
       {/* 통계 (실시간 기본 선택) */}
       <section className="space-y-4">
         <h2 className="text-lg md:text-xl font-bold">통계</h2>
-        <StreamerDateFilter rows={allRows} todayRows={today} />
+        <StreamerDateFilter rows={allRows} />
       </section>
 
       {/* 역대 최고 시청자 기록 */}

@@ -92,7 +92,7 @@ export function CurrentStatsStrip({
         <span className="text-xs text-muted-foreground">실시간</span>
       </div> */}
 
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex flex-wrap  items-center gap-x-6 gap-y-3">
         <div className="flex flex-col gap-0">
           <p className="mb-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Users className="h-3.5 w-3.5" />

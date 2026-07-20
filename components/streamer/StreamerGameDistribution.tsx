@@ -1,4 +1,11 @@
 import { formatDuration } from "@/lib/utils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
 
 type CategoryRow = {
   category: string;
@@ -22,14 +29,16 @@ export function StreamerGameDistribution({
   const total = sorted.reduce((sum, r) => sum + r.count, 0);
 
   return (
-    <div className="rounded-lg border bg-card p-4 md:p-6">
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="mb-4 text-xs text-muted-foreground">{description}</p>
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
 
       {sorted.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
-        <div className="space-y-3">
+        <CardContent className="space-y-4">
           {sorted.map((row, i) => {
             const color = `var(--chart-${(i % 30) + 1})`;
             const percent =
@@ -53,8 +62,8 @@ export function StreamerGameDistribution({
               </div>
             );
           })}
-        </div>
+        </CardContent>
       )}
-    </div>
+    </Card>
   );
 }

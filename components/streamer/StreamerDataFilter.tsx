@@ -20,22 +20,11 @@ type Row = {
   maxViewers: number;
 };
 
-type TodayRow = {
-  category: string;
-  categoryId: string;
-  totalViewers: number;
-  count: number;
-  avgViewers: number;
-  concurrentViewers: number;
-};
-
 type Props = {
   rows: Row[];
-  todayRows: TodayRow[];
 };
 
 const presets = [
-  { label: "실시간", key: "live" },
   { label: "어제", key: "yesterday" },
   { label: "7일", key: "weekly" },
   { label: "30일", key: "monthly" },
@@ -43,19 +32,19 @@ const presets = [
 ] as const;
 
 type PresetKey = (typeof presets)[number]["key"];
+type Metric = "avgViewers" | "maxViewers";
 
-const liveMetricTabs = [{ label: "실시간 시청자", key: "live" as const }];
-const avgMetricTabs = [{ label: "평균 시청자", key: "avgViewers" as const }];
+const metricTabs = [
+  { label: "평균 시청자", key: "avgViewers" as const },
+  { label: "최고 시청자", key: "maxViewers" as const },
+];
 
-export function StreamerDateFilter({ rows, todayRows }: Props) {
-  const [active, setActive] = useState<PresetKey | "custom">("live");
+export function StreamerDateFilter({ rows }: Props) {
+  const [active, setActive] = useState<PresetKey | "custom">("weekly");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
-
-  const isLive = active === "live";
+  const [metric, setMetric] = useState<Metric>("avgViewers");
 
   const filtered = useMemo(() => {
-    if (active === "live") return [];
-
     const today = new Date();
     const kstToday = new Date(today.getTime() + 9 * 60 * 60 * 1000)
       .toISOString()
@@ -87,27 +76,20 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
       return rows;
     }
     if (active === "custom" && customRange?.from && customRange?.to) {
-      const from = customRange.from.toISOString().slice(0, 10);
-      const to = customRange.to.toISOString().slice(0, 10);
+      const toYMD = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const from = toYMD(customRange.from);
+      const to = toYMD(customRange.to);
       return rows.filter((r) => r.date >= from && r.date <= to);
     }
     return rows;
   }, [active, rows, customRange]);
 
   const gameMap = useMemo(() => {
-    if (isLive) {
-      return [...todayRows]
-        .map((d) => ({
-          category: d.category,
-          categoryId: d.categoryId,
-          totalViewers: d.totalViewers,
-          count: d.count,
-          avgViewers: d.avgViewers,
-          concurrentViewers: d.concurrentViewers,
-        }))
-        .sort((a, b) => b.totalViewers - a.totalViewers);
-    }
-
     const map = new Map<
       string,
       {
@@ -115,6 +97,7 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
         liveCategory: string;
         totalViewers: number;
         broadcastCount: number;
+        maxViewers: number;
       }
     >();
     for (const row of filtered) {
@@ -123,11 +106,13 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
         liveCategory: row.liveCategory,
         totalViewers: 0,
         broadcastCount: 0,
+        maxViewers: 0,
       };
       map.set(row.liveCategory, {
         ...prev,
         totalViewers: prev.totalViewers + row.totalViewers,
         broadcastCount: prev.broadcastCount + row.broadcastCount,
+        maxViewers: Math.max(prev.maxViewers, row.maxViewers),
       });
     }
     return Array.from(map.values())
@@ -144,12 +129,45 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
           d.broadcastCount > 0
             ? Math.round(d.totalViewers / d.broadcastCount)
             : 0,
+        maxViewers: d.maxViewers,
       }))
-      .sort((a, b) => b.avgViewers - a.avgViewers);
-  }, [isLive, filtered, todayRows]);
+      .sort((a, b) =>
+        metric === "maxViewers"
+          ? b.maxViewers - a.maxViewers
+          : b.avgViewers - a.avgViewers,
+      );
+  }, [filtered, metric]);
+
+  const setPreset = (key: PresetKey) => {
+    setActive(key);
+
+    const today = new Date();
+
+    if (key === "yesterday") {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 1);
+      setCustomRange({ from: d, to: d });
+      return;
+    }
+    if (key === "weekly") {
+      const from = new Date(today);
+      from.setDate(from.getDate() - 6);
+      setCustomRange({ from, to: today });
+      return;
+    }
+    if (key === "monthly") {
+      const from = new Date(today);
+      from.setDate(from.getDate() - 29);
+      setCustomRange({ from, to: today });
+      return;
+    }
+    if (key === "all") {
+      setCustomRange(undefined);
+      return;
+    }
+  };
 
   const getBadgeLabel = () => {
-    if (active === "live") return "실시간";
     if (active === "yesterday") return "어제";
     if (active === "weekly") return "최근 7일";
     if (active === "monthly") return "최근 30일";
@@ -160,16 +178,22 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
     return "기간 선택";
   };
 
+  const chartTitle = metric === "maxViewers" ? "최고 시청자" : "평균 시청자";
+  const chartDescription =
+    metric === "maxViewers"
+      ? "게임별 최고 동시시청자"
+      : "게임별 평균 시청자 수";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <UnderlineTabs
-          options={isLive ? liveMetricTabs : avgMetricTabs}
-          active={isLive ? "live" : "avgViewers"}
-          onChange={() => {}}
+          options={metricTabs}
+          active={metric}
+          onChange={setMetric}
         />
 
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1.5">
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/3 p-1.5">
           <div className="flex items-center gap-1.5 px-2.5 py-1 text-sm font-semibold text-white">
             <CalendarDays className="h-4 w-4 shrink-0 text-white/40" />
             {getBadgeLabel()}
@@ -181,7 +205,7 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
             {presets.map((p) => (
               <button
                 key={p.key}
-                onClick={() => setActive(p.key)}
+                onClick={() => setPreset(p.key)}
                 className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
                 style={
                   active === p.key
@@ -216,18 +240,15 @@ export function StreamerDateFilter({ rows, todayRows }: Props) {
         </div>
       </div>
 
-      {/* 차트 */}
       {gameMap.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <ChartBarMixed
-            title={isLive ? "실시간 시청자" : "평균 시청자"}
-            description={
-              isLive ? "게임별 현재 시청자 수" : "게임별 평균 시청자 수"
-            }
+            title={chartTitle}
+            description={chartDescription}
             data={gameMap}
-            dataKey="avgViewers"
+            dataKey={metric}
           />
           <StreamerGameDistribution
             rows={gameMap}

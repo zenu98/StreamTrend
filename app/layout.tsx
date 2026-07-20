@@ -55,9 +55,9 @@ export default function RootLayout({
       lang="ko"
       className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col ">
+      <body className="min-h-full flex flex-col">
         <Header />
-        {children}
+        <main className="flex-1">{children}</main>
         <Footer />
         <Analytics />
       </body>

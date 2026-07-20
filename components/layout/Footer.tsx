@@ -5,9 +5,7 @@ export function Footer() {
     <footer className="border-t border-white/10 mt-30">
       <div className="mx-auto px-4 md:px-8 py-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <p className="text-sm font-semibold text-white">
-            StreamTrend Beta v0.3
-          </p>
+          <p className="text-sm font-semibold text-white">StreamTrend Beta</p>
 
           <div className="flex flex-wrap items-center gap-5 text-sm text-white/50">
             <div className="flex items-center gap-1">
