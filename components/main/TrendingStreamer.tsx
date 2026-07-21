@@ -95,7 +95,7 @@ export function TrendingStreamer({ streamers }: Props) {
               <p className="text-xs md:text-sm font-semibold text-white truncate">
                 {streamer.channelName}
               </p>
-              <p className="text-[10px] md:text-xs text-white/40 mt-0.5 truncate">
+              <p className="text-xs md:text-xs text-white/40 mt-0.5 truncate">
                 {streamer.topGames.join(" · ")}
               </p>
             </div>

@@ -93,7 +93,7 @@ export function StreamerMainGame({ rows }: { rows: Row[] }) {
         className="block rounded-xl border bg-card px-4 py-3 hover:bg-muted/50 transition-colors"
       >
         <div className="flex gap-3 items-center">
-          <div className="w-24 self-stretch rounded-lg bg-muted flex-shrink-0 overflow-hidden relative border">
+          <div className="w-20 aspect-[3/4] rounded-lg bg-muted flex-shrink-0 overflow-hidden relative border">
             {first.posterImageUrl ? (
               <Image
                 src={first.posterImageUrl}
@@ -144,7 +144,7 @@ export function StreamerMainGame({ rows }: { rows: Row[] }) {
 
       {/* 2·3위 */}
       {rest.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {rest.map((game, i) => {
             const pct =
               totalBroadcastCount > 0
@@ -154,17 +154,17 @@ export function StreamerMainGame({ rows }: { rows: Row[] }) {
               <Link
                 key={game.categoryId}
                 href={`/games/${encodeURIComponent(game.categoryId)}`}
-                className=" rounded-xl border bg-card px-3 py-2.5 hover:bg-muted/50 transition-colors"
+                className="rounded-xl border bg-card px-3 py-2.5 hover:bg-muted/50 transition-colors"
               >
-                <div className="flex min-h-[80px] gap-2 items-center mb-2">
-                  <div className="w-24 self-stretch rounded-lg bg-muted flex-shrink-0 overflow-hidden relative border">
+                <div className="flex min-h-[90px] gap-2.5 items-center">
+                  <div className="w-16 aspect-[3/4] rounded-lg bg-muted flex-shrink-0 overflow-hidden relative border">
                     {game.posterImageUrl ? (
                       <Image
                         src={game.posterImageUrl}
                         alt={game.category}
                         fill
                         className="object-cover"
-                        sizes="48px"
+                        sizes="56px"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
@@ -173,26 +173,33 @@ export function StreamerMainGame({ rows }: { rows: Row[] }) {
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <p className="text-sm font-medium truncate">
                       {game.category}
                     </p>
-
-                    <div className="h-1 bg-muted rounded-full overflow-hidden mb-1">
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                      <Users className="h-3 w-3 shrink-0" />
+                      평균 {game.avgViewers.toLocaleString()}명
+                    </p>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                       <div
                         className="h-full bg-muted-foreground/40 rounded-full"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDuration(game.broadcastCount)} · {game.dayCount}
-                        일
-                      </span>
-                      <span className="flex items-center justify-center text-xs gap-1 text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        평균 {game.avgViewers.toLocaleString()}명
-                      </span>
+                    <div className="flex items-center gap-4">
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                        <Clock className="h-3 w-3 shrink-0 " />
+                        <span className="translate-y-0.5">
+                          {formatDuration(game.broadcastCount)}
+                        </span>
+                      </p>
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        <span className="translate-y-0.5">
+                          {game.dayCount}일 방송
+                        </span>
+                      </p>
                     </div>
                   </div>
                 </div>
