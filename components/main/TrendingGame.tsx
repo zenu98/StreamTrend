@@ -179,7 +179,7 @@ function GameRankingBody({
   valueKey: ValueKey;
 }) {
   const top3 = games.slice(0, 3);
-  const rest = games.slice(3, 11);
+  const rest = games.slice(3, 12);
   const podiumOrder = [top3[1], top3[0], top3[2]];
 
   if (games.length === 0) {
@@ -206,12 +206,14 @@ function GameRankingBody({
         })}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
         {rest.map((game, idx) => (
           <Link
             key={`list-${game.categoryId}`}
             href={`/games/${encodeURIComponent(game.categoryId)}`}
-            className="relative aspect-[3/4] rounded-xl overflow-hidden group"
+            className={`relative aspect-3/4 rounded-xl overflow-hidden group ${
+              idx >= 6 ? "hidden md:block" : ""
+            }`}
           >
             {game.posterImageUrl ? (
               <Image
