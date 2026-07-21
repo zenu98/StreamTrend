@@ -14,7 +14,7 @@ import { TrendingStreamer } from "@/components/main/TrendingStreamer";
 
 export default function Home() {
   return (
-    <main className="p-4 md:p-8 space-y-12">
+    <main className="md:p-8 space-y-12">
       <Suspense
         fallback={<div className="text-muted-foreground">로딩 중...</div>}
       >
