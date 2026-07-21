@@ -162,7 +162,14 @@ export async function getStreamerAllStats(channelId: string) {
     where: { channelId },
     orderBy: { date: "asc" },
   });
-
+  const categoryIds = [...new Set(rows.map((r) => r.liveCategory))];
+  const categories = await prisma.category.findMany({
+    where: { categoryId: { in: categoryIds } },
+    select: { categoryId: true, posterImageUrl: true },
+  });
+  const posterMap = new Map(
+    categories.map((c) => [c.categoryId, c.posterImageUrl]),
+  );
   const result = rows.map((r) => ({
     date: new Date(r.date.getTime() + 9 * 60 * 60 * 1000)
       .toISOString()
@@ -174,6 +181,7 @@ export async function getStreamerAllStats(channelId: string) {
     broadcastCount: r.broadcastCount,
     avgViewers: r.avgViewers,
     maxViewers: r.maxViewers,
+    posterImageUrl: posterMap.get(r.liveCategory) ?? null,
   }));
 
   // console.log(

@@ -204,7 +204,7 @@ function GameRankingBody({
                 src={top3[0].posterImageUrl}
                 alt={top3[0].category}
                 fill
-                className="object-cover"
+                className="object-cover "
                 sizes="100vw"
                 priority
               />

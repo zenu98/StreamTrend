@@ -4,7 +4,7 @@ export function Header() {
   return (
     <header className="border-b px-4 md:px-8 h-14 flex items-center justify-between">
       <Link href="/" className="font-bold text-lg">
-        스트림트렌드
+        스트림트렌드 Beta
       </Link>
       <nav className="flex items-center gap-6">
         <Link

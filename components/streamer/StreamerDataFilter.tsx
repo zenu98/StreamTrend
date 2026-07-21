@@ -62,15 +62,25 @@ export function StreamerDateFilter({ rows }: Props) {
       const from = new Date(today.getTime() + 9 * 60 * 60 * 1000 - 7 * 86400000)
         .toISOString()
         .slice(0, 10);
-      return rows.filter((r) => r.date >= from && r.date <= kstToday);
+      const yesterday = new Date(
+        today.getTime() + 9 * 60 * 60 * 1000 - 86400000,
+      )
+        .toISOString()
+        .slice(0, 10);
+      return rows.filter((r) => r.date >= from && r.date <= yesterday); // kstToday → yesterday
     }
     if (active === "monthly") {
+      const yesterday = new Date(
+        today.getTime() + 9 * 60 * 60 * 1000 - 86400000,
+      )
+        .toISOString()
+        .slice(0, 10);
       const from = new Date(
         today.getTime() + 9 * 60 * 60 * 1000 - 30 * 86400000,
       )
         .toISOString()
         .slice(0, 10);
-      return rows.filter((r) => r.date >= from && r.date <= kstToday);
+      return rows.filter((r) => r.date >= from && r.date <= yesterday);
     }
     if (active === "all") {
       return rows;
@@ -150,15 +160,19 @@ export function StreamerDateFilter({ rows }: Props) {
       return;
     }
     if (key === "weekly") {
+      const to = new Date(today);
+      to.setDate(to.getDate() - 1); // 어제까지
       const from = new Date(today);
-      from.setDate(from.getDate() - 6);
-      setCustomRange({ from, to: today });
+      from.setDate(from.getDate() - 7);
+      setCustomRange({ from, to }); // to가 today → yesterday
       return;
     }
     if (key === "monthly") {
+      const to = new Date(today);
+      to.setDate(to.getDate() - 1);
       const from = new Date(today);
       from.setDate(from.getDate() - 29);
-      setCustomRange({ from, to: today });
+      setCustomRange({ from, to });
       return;
     }
     if (key === "all") {
@@ -180,9 +194,7 @@ export function StreamerDateFilter({ rows }: Props) {
 
   const chartTitle = metric === "maxViewers" ? "최고 시청자" : "평균 시청자";
   const chartDescription =
-    metric === "maxViewers"
-      ? "게임별 최고 동시시청자"
-      : "게임별 평균 시청자 수";
+    metric === "maxViewers" ? "게임별 최고 시청자" : "게임별 평균 시청자 수";
 
   return (
     <div className="space-y-4">

@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import { getStreamerBasicInfo } from "@/lib/streamerStats";
 import { StreamerTrendChart } from "@/components/streamer/StreamerTrendChart";
 import { StreamerCurrentStats } from "@/components/streamer/StreamerCurrentStats";
+import { StreamerMainGame } from "@/components/streamer/StreamerMainGame";
 
 export async function generateMetadata({
   params,
@@ -91,6 +92,9 @@ async function StreamerDetail({
             totalViewers: d.totalViewers,
           }))}
         />
+      </section>
+      <section className="space-y-4">
+        <StreamerMainGame rows={allRows} />
       </section>
       <section className="space-y-4">
         <StreamerTrendChart trendRows={trendRows} />

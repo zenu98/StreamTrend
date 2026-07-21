@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { differenceInCalendarDays } from "date-fns";
 import { CalendarDays, Users, Clock } from "lucide-react";
@@ -42,7 +42,12 @@ const presets = [
 ];
 
 function StreamerTrendTooltip(props: any) {
-  const { active, payload, metric } = props;
+  const { active, payload, metric, onActiveRow } = props;
+  useEffect(() => {
+    if (active && payload?.length) {
+      onActiveRow?.(payload[0]?.payload as TrendRow);
+    }
+  }, [active, payload, onActiveRow]);
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload as TrendRow | undefined;
   if (!row) return null;
@@ -52,16 +57,15 @@ function StreamerTrendTooltip(props: any) {
     metric === "maxViewers" ? row.maxViewers : row.concurrentViewers;
   const gameValueLabel = metric === "maxViewers" ? "최고" : "평균";
 
-  return (
-    <div className="max-w-[280px] min-w-[220px] rounded-lg border bg-popover px-3.5 py-3 text-sm shadow-md">
+  const content = (
+    <>
       <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
         <span
           className="h-2.5 w-2.5 rounded-full"
           style={{ background: "var(--chart-1)" }}
         />
-
         {headerLabel}
-        <span className="ml-auto">{headerValue.toLocaleString()}</span>
+        <span className="ml-auto">{headerValue.toLocaleString()} 명</span>
       </div>
 
       {row.gameBreakdown && row.gameBreakdown.length > 0 && (
@@ -94,21 +98,36 @@ function StreamerTrendTooltip(props: any) {
           })}
         </div>
       )}
-      <div className="flex justify-end ">
-        <span className=" text-xs text-muted-foreground/90">
+      <div className="flex justify-end">
+        <span className="text-xs text-muted-foreground/90">
           {formatKoreanDate(row.displayDate)}
         </span>
       </div>
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* 데스크톱: 기존 떠다니는 툴팁 */}
+      <div className="hidden md:block max-w-[280px] min-w-[220px] rounded-lg border bg-popover px-3.5 py-3 text-sm shadow-md">
+        {content}
+      </div>
+
+      {/* 모바일: 투명 div (툴팁 자체는 안 보이게) */}
+      <div className="md:hidden" />
+    </>
   );
 }
 
 export function StreamerTrendChart({ trendRows }: Props) {
+  const [activeRow, setActiveRow] = useState<TrendRow | null>(null);
   const [metric, setMetric] = useState<Metric>("concurrentViewers");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    const to = new Date();
+    to.setDate(to.getDate() - 1); // 어제까지
     const from = new Date();
-    from.setDate(from.getDate() - 6);
-    return { from, to: new Date() };
+    from.setDate(from.getDate() - 7); // 7일 전부터
+    return { from, to };
   });
 
   const dayCount =
@@ -118,8 +137,9 @@ export function StreamerTrendChart({ trendRows }: Props) {
 
   const applyPreset = (days: number) => {
     const to = new Date();
+    to.setDate(to.getDate() - 1); // 어제까지
     const from = new Date();
-    from.setDate(from.getDate() - (days - 1));
+    from.setDate(from.getDate() - days); // days일 전부터
     setDateRange({ from, to });
   };
 
@@ -200,8 +220,70 @@ export function StreamerTrendChart({ trendRows }: Props) {
         xAxisKey="displayDate"
         label={metricLabel}
         footerNote={`전체 게임 통합 · 최근 ${filteredRows.length}일 기준`}
-        renderTooltip={<StreamerTrendTooltip metric={metric} />}
+        renderTooltip={
+          <StreamerTrendTooltip
+            metric={metric}
+            onActiveRow={setActiveRow} // ← 추가
+          />
+        }
       />
+
+      {/* 모바일 전용 하단 고정 패널 */}
+      {activeRow && (
+        <div className="md:hidden rounded-lg border bg-popover px-3.5 py-3 text-sm">
+          <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
+            <span
+              className="h-2.5 w-2.5 rounded-full"
+              style={{ background: "var(--chart-1)" }}
+            />
+            {metric === "maxViewers" ? "최고 시청자" : "평균 시청자"}
+            <span className="ml-auto">
+              {(metric === "maxViewers"
+                ? activeRow.maxViewers
+                : activeRow.concurrentViewers
+              ).toLocaleString()}
+            </span>
+          </div>
+
+          {activeRow.gameBreakdown && activeRow.gameBreakdown.length > 0 && (
+            <div className="space-y-2.5">
+              {activeRow.gameBreakdown.map((g) => {
+                const gameValue =
+                  metric === "maxViewers" ? g.maxViewers : g.concurrentViewers;
+                return (
+                  <div key={g.category}>
+                    <p className="text-xs font-medium text-foreground">
+                      {g.category}
+                    </p>
+                    <p className="mt-0.5 flex gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {metric === "maxViewers" ? "최고" : "평균"}{" "}
+                        {gameValue.toLocaleString()}명
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatDuration(g.broadcastCount)}
+                      </span>
+                    </p>
+                    {g.liveTitle && (
+                      <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
+                        {g.liveTitle}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="flex justify-end mt-2">
+            <span className="text-xs text-muted-foreground/90">
+              {formatKoreanDate(activeRow.displayDate)}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
