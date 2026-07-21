@@ -127,7 +127,7 @@ function PodiumItem({
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/60" />
           <div className="absolute inset-0 flex items-center justify-center flex-col gap-1">
-            <span className="text-3xl md:text-5xl lg:text-6xl text-gray-200 leading-none [font-family:var(--font-anton)] tracking-wider">
+            <span className="text-2xl md:text-5xl lg:text-6xl text-gray-200 leading-none [font-family:var(--font-anton)] tracking-wider">
               {value.toLocaleString()}
             </span>
           </div>
@@ -231,7 +231,7 @@ function GameRankingBody({
               {idx + 4}
             </div>
             <div className="absolute inset-0 flex items-center justify-center flex-col gap-1">
-              <span className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-200 leading-none [font-family:var(--font-anton)] tracking-widest">
+              <span className="text-2xl md:text-5xl lg:text-6xl font-bold text-gray-200 leading-none [font-family:var(--font-anton)] tracking-widest">
                 {(game[valueKey] ?? 0).toLocaleString()}
               </span>
             </div>
