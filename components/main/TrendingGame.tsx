@@ -304,7 +304,7 @@ export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
   return (
     <section className=" space-y-6 px-4 md:px-0">
       <div className="text-center mt-8 md:mt-16 mb-4 md:mb-8">
-        <h1 className="text-4xl md:text-6xl font-extrabold text-white">
+        <h1 className="text-4xl mb-4 md:text-6xl font-extrabold text-white">
           트렌딩 게임
         </h1>
         <div className="flex items-center justify-center gap-1 mt-2">

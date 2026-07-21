@@ -19,3 +19,10 @@ export function formatDuration(tickCount: number, intervalMinutes = 5): string {
   if (minutes === 0) return `${hours}시간`;
   return `${hours}시간 ${minutes}분`;
 }
+
+export function formatKoreanDate(dateStr: string): string {
+  const [mm, dd] = dateStr.split("-");
+  const m = parseInt(mm, 10);
+  const d = parseInt(dd, 10);
+  return Number.isFinite(m) && Number.isFinite(d) ? `${m}월 ${d}일` : dateStr; // 혹시 다른 포맷이 들어와도 안전하게
+}

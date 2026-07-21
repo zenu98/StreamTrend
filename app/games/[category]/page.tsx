@@ -118,7 +118,7 @@ async function GameDetail({
           viewerPercentile={liveStats.viewerPercentile}
           countPercentile={liveStats.countPercentile}
           viewerRank={liveStats.viewerRank}
-          countRank={liveStats.countRank}
+          // countRank={liveStats.countRank}
           viewerTieCount={liveStats.viewerTieCount}
           countTieCount={liveStats.countTieCount}
           totalGames={liveStats.totalGames}
@@ -126,6 +126,7 @@ async function GameDetail({
           viewerShare={liveStats.viewerShare}
           countShare={liveStats.countShare}
           currentCount={liveStats.currentCount}
+          // topStreamerViewers={liveStats.currentMaxViewer?.concurrentUserCount}
           trendRows={stats.allRows}
           currentViewers={liveStats.currentViewers}
           todayLabel={toKSTDateString(new Date())}

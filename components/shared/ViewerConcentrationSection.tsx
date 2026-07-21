@@ -6,6 +6,8 @@ import {
   LineChart,
   TrendingUp,
   TrendingDown,
+  Info,
+  Zap,
 } from "lucide-react";
 import {
   Card,
@@ -14,14 +16,24 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-type TrendRow = { date: string; concurrentViewers: number };
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatKoreanDate } from "@/lib/utils";
+type TrendRow = {
+  date: string;
+  concurrentViewers: number;
+  broadcastCount?: number;
+};
 
 type Props = {
   viewerPercentile: number;
   countPercentile: number;
   viewerRank: number;
-  countRank: number;
+
   viewerTieCount: number;
   countTieCount: number;
   totalGames: number;
@@ -37,7 +49,7 @@ type Props = {
 const HIGH = 20;
 const LOW = 70;
 
-function classify(currentViewers: number, currentCount: number) {
+function classifyQuadrant(currentViewers: number, currentCount: number) {
   // 10,000+
   if (currentViewers >= 10000) {
     if (currentCount >= 80) {
@@ -258,6 +270,25 @@ function classify(currentViewers: number, currentCount: number) {
     color: "#94a3b8",
   };
 }
+function classify(
+  currentViewers: number,
+  currentCount: number,
+  isConcentratedSpike?: boolean,
+) {
+  const base = classifyQuadrant(currentViewers, currentCount);
+
+  if (!isConcentratedSpike) {
+    return { ...base, isStreamerDriven: false };
+  }
+
+  return {
+    ...base,
+    label: "대형 스트리머 효과",
+    desc: "오늘 시청자가 평소 패턴을 벗어나 급증했고, 소수 방송에 몰려 있어요 — 게임 자체의 저변보다 대회·합방·광고 같은 일회성 이벤트의 영향으로 보여요.",
+    color: "#f472b6",
+    isStreamerDriven: true,
+  };
+}
 function rankColor(percentile: number, base: string) {
   if (percentile <= HIGH) return "#34d399";
   if (percentile >= LOW) return "#94a3b8";
@@ -353,14 +384,61 @@ function ShareBadge({
     </div>
   );
 }
+function ConsistencyStrip({
+  rows,
+  anomalyDates,
+  liveIndex,
+  color,
+}: {
+  rows: TrendRow[];
+  anomalyDates: Set<string>;
+  liveIndex: number;
+  color: string;
+}) {
+  const values = rows.map((r) => r.concurrentViewers);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+
+  return (
+    <div className="flex items-end gap-1" style={{ height: 112 }}>
+      {rows.map((row, i) => {
+        const heightPct = ((row.concurrentViewers - min) / range) * 100;
+        const isAnomaly = anomalyDates.has(row.date);
+        const isLive = i === liveIndex;
+
+        return (
+          <div key={row.date} className="group relative flex-1 h-full">
+            <div
+              className="absolute bottom-0 w-full rounded-sm transition-opacity"
+              style={{
+                height: `${Math.max(heightPct, 3)}%`,
+                background: isAnomaly ? "#fbbf24" : color,
+                opacity: isLive ? 0.5 : 1,
+                border: isLive ? `1px dashed ${color}` : undefined,
+              }}
+            />
+            <div className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded bg-background px-1.5 py-0.5 text-[10px] shadow-sm opacity-0 group-hover:opacity-100">
+              {row.date}
+              {isLive ? " (진행 중)" : ""} ·{" "}
+              {row.concurrentViewers.toLocaleString()}명
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function analyzeTrend(rows: TrendRow[]) {
   const n = rows.length;
   const values = rows.map((r) => r.concurrentViewers);
+  const broadcastCounts = rows.map((r) => r.broadcastCount ?? 0);
   const mean = values.reduce((a, b) => a + b, 0) / n;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / n;
   const stdev = Math.sqrt(variance);
   const cv = mean > 0 ? stdev / mean : 0;
 
+  // 선형회귀 (기존과 동일)
   const xMean = (n - 1) / 2;
   let num = 0;
   let den = 0;
@@ -377,37 +455,123 @@ function analyzeTrend(rows: TrendRow[]) {
       ? ((predictedEnd - predictedStart) / predictedStart) * 100
       : 0;
 
-  const half = Math.floor(n / 2);
-  const firstHalfMean =
-    values.slice(0, half).reduce((a, b) => a + b, 0) / Math.max(1, half);
-  const secondHalfMean =
-    values.slice(half).reduce((a, b) => a + b, 0) / Math.max(1, n - half);
-  const momentumPct =
-    firstHalfMean > 0
-      ? ((secondHalfMean - firstHalfMean) / firstHalfMean) * 100
-      : 0;
+  let ssRes = 0;
+  let ssTot = 0;
+  for (let i = 0; i < n; i++) {
+    const predicted = intercept + slope * i;
+    ssRes += (values[i] - predicted) ** 2;
+    ssTot += (values[i] - mean) ** 2;
+  }
+  const r2 = ssTot > 0 ? Math.max(0, 1 - ssRes / ssTot) : 0;
 
-  const anomalies = rows
+  // 최근 모멘텀 (최근 3일 vs 그 이전)
+  const RECENT_WINDOW = 3;
+  const recentCount = Math.min(RECENT_WINDOW, n - 1);
+  const recentValues = values.slice(n - recentCount);
+  const priorValues = values.slice(0, n - recentCount);
+  const recentMean =
+    recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
+  const priorMean = priorValues.reduce((a, b) => a + b, 0) / priorValues.length;
+  const momentumPct =
+    priorMean > 0 ? ((recentMean - priorMean) / priorMean) * 100 : 0;
+
+  // 정점 위치 + 정점 이후 며칠째인지
+  let peakIdx = 0;
+  for (let i = 1; i < n; i++) {
+    if (values[i] > values[peakIdx]) peakIdx = i;
+  }
+  const daysSincePeak = n - 1 - peakIdx;
+  const peakDate = rows[peakIdx].date;
+
+  // 마지막 값부터 거슬러 올라가며 연속 상승/하락 길이
+  let streakLen = 0;
+  let streakDir: "up" | "down" | "flat" = "flat";
+  for (let i = n - 1; i > 0; i--) {
+    const diff = values[i] - values[i - 1];
+    const dir = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    if (streakLen === 0) {
+      if (dir === "flat") break;
+      streakDir = dir;
+      streakLen = 1;
+    } else if (dir === streakDir) {
+      streakLen++;
+    } else {
+      break;
+    }
+  }
+
+  const ANOMALY_Z_THRESHOLD = 2.5;
+  const rawAnomalies = rows
     .map((r, i) => ({
       date: r.date,
       z: stdev > 0 ? (values[i] - mean) / stdev : 0,
+      viewersPerBroadcast:
+        broadcastCounts[i] > 0 ? values[i] / broadcastCounts[i] : 0,
     }))
-    .filter((a) => a.z >= 2);
+    .filter((a) => a.z >= ANOMALY_Z_THRESHOLD);
+
+  // ↓ 추가: 이상치가 아닌 "평소" 날들의 방송당 평균 시청자 = 기준선
+  const anomalyDateSet = new Set(rawAnomalies.map((a) => a.date));
+  const normalIdx = rows
+    .map((_, i) => i)
+    .filter((i) => !anomalyDateSet.has(rows[i].date));
+  const baselineVPB =
+    normalIdx.length > 0
+      ? normalIdx.reduce((sum, i) => {
+          const vpb =
+            broadcastCounts[i] > 0 ? values[i] / broadcastCounts[i] : 0;
+          return sum + vpb;
+        }, 0) / normalIdx.length
+      : 0;
+
+  // ↓ 추가: 기준선 대비 2배 이상이면 "소수(대형 스트리머)가 만든 쏠림"으로 판단
+  const CONCENTRATION_MULTIPLIER = 2;
+  const anomalies = rawAnomalies.map((a) => ({
+    ...a,
+    isConcentrated:
+      baselineVPB > 0 &&
+      a.viewersPerBroadcast >= baselineVPB * CONCENTRATION_MULTIPLIER,
+  }));
 
   const consistencyScore = Math.round(
     Math.max(0, Math.min(100, 100 * (1 - cv))),
   );
 
+  // ↓ 메인 라벨: 이상치를 최우선으로 보지 않고, diverging > peak > momentum > consistency 순으로 결정
   let label: string;
   let color: string;
-  if (anomalies.length > 0) {
-    label = `${anomalies.map((a) => a.date).join(", ")}에 통계적으로 튄 방송이 있었어요`;
-    color = "#fbbf24";
+
+  const diverging =
+    Math.abs(trendChangePct) >= 20 &&
+    Math.abs(momentumPct) >= 15 &&
+    Math.sign(trendChangePct) !== Math.sign(momentumPct);
+
+  const decliningFromPeak =
+    daysSincePeak > 0 && daysSincePeak <= 4 && momentumPct <= -15;
+
+  if (diverging && trendChangePct > 0) {
+    label = `기간 전체로는 상승세지만(+${Math.round(trendChangePct)}%), 최근 들어 꺾였어요(${Math.round(momentumPct)}%)`;
+    color = "#fb923c";
+  } else if (diverging && trendChangePct < 0) {
+    label = `기간 전체로는 하락세지만(${Math.round(trendChangePct)}%), 최근 들어 반등했어요(+${Math.round(momentumPct)}%)`;
+    color = "#34d399";
+  } else if (decliningFromPeak) {
+    label =
+      daysSincePeak === 1
+        ? `어제 정점(${peakDate}) 이후 하락 중이에요`
+        : `${daysSincePeak}일 전 정점(${peakDate}) 이후 하락 중이에요`;
+    color = "#f87171";
   } else if (momentumPct >= 15) {
-    label = `최근 들어 상승세예요 (전반 대비 +${Math.round(momentumPct)}%)`;
+    label =
+      streakLen >= 3
+        ? `${streakLen}일 연속 상승 중이에요 (+${Math.round(momentumPct)}%)`
+        : `최근 들어 상승세예요 (직전 대비 +${Math.round(momentumPct)}%)`;
     color = "#34d399";
   } else if (momentumPct <= -15) {
-    label = `최근 들어 하락세예요 (전반 대비 ${Math.round(momentumPct)}%)`;
+    label =
+      streakLen >= 3
+        ? `${streakLen}일 연속 하락 중이에요 (${Math.round(momentumPct)}%)`
+        : `최근 들어 하락세예요 (직전 대비 ${Math.round(momentumPct)}%)`;
     color = "#f87171";
   } else if (consistencyScore >= 65) {
     label = "꾸준한 인기예요";
@@ -417,147 +581,104 @@ function analyzeTrend(rows: TrendRow[]) {
     color = "#60a5fa";
   }
 
+  let anomalyNote: string | null = null;
+
+  if (anomalies.length > 0) {
+    anomalyNote = anomalies
+      .map((a) =>
+        a.isConcentrated
+          ? `${formatKoreanDate(a.date)} 대형 스트리머 영향으로 급상승`
+          : `${formatKoreanDate(a.date)} 급상승`,
+      )
+      .join(", ");
+
+    const hasConcentrated = anomalies.some((a) => a.isConcentrated);
+    if (
+      color === "#60a5fa" ||
+      (color === "#34d399" &&
+        !diverging &&
+        !decliningFromPeak &&
+        momentumPct < 15)
+    ) {
+      color = hasConcentrated ? "#f472b6" : "#fbbf24";
+    }
+  }
+
   return {
     values,
     consistencyScore,
     trendChangePct,
     momentumPct,
+    r2,
+    peakDate,
+    peakValue: values[peakIdx],
+    daysSincePeak,
+    streakLen,
+    streakDir,
     anomalies,
-    label,
+    label, // ← 이제 이상치 문구 안 섞인 순수 메인 라벨
+    anomalyNote, // ← 새 필드, 없으면 null
     color,
   };
 }
 
+type ChartPoint = {
+  date: string;
+  historical: number | null;
+  live: number | null;
+  isAnomaly: boolean;
+  isLive: boolean;
+};
+
 function TrendArea({
-  rows,
-  liveViewers,
-  liveLabel,
+  combined,
+  hasLive,
+  analysis,
 }: {
-  rows: TrendRow[];
-  liveViewers?: number;
-  liveLabel?: string;
+  combined: TrendRow[];
+  hasLive: boolean;
+  analysis: ReturnType<typeof analyzeTrend>;
 }) {
-  const base = rows.slice(-13);
-  const hasLive =
-    liveViewers != null &&
-    !!liveLabel &&
-    liveLabel !== base[base.length - 1]?.date;
-
-  const combined: (TrendRow & { live?: boolean })[] = hasLive
-    ? [
-        ...base,
-        { date: liveLabel!, concurrentViewers: liveViewers!, live: true },
-      ]
-    : base;
-
-  if (combined.length < 4) return null;
-
-  const analysis = analyzeTrend(combined);
-  const { values } = analysis;
-
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-  const range = max - min || 1;
-  const width = 480;
-  const height = 110;
-  const padY = 10;
-  const coords = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * width;
-    const y = height - padY - ((v - min) / range) * (height - padY * 2);
-    return [x, y] as const;
-  });
-
-  const liveIndex = hasLive ? coords.length - 1 : -1;
-  const solidCoords = liveIndex > 0 ? coords.slice(0, liveIndex) : coords;
-  const solidPoints = solidCoords
-    .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-    .join(" ");
-  const allPoints = coords
-    .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
-    .join(" ");
-  const areaPoints = `0,${height} ${allPoints} ${width},${height}`;
-
   const anomalyDates = new Set(analysis.anomalies.map((a) => a.date));
+  const liveIndex = hasLive ? combined.length - 1 : -1;
+
+  const peakLabel =
+    analysis.daysSincePeak === 0
+      ? "오늘"
+      : analysis.daysSincePeak === 1
+        ? "어제"
+        : `${analysis.daysSincePeak}일 전`;
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <LineChart className="h-4 w-4 text-muted-foreground" />
           인기 지속성 · 최근 {combined.length}일
+          {/* Info 아이콘 툴팁은 그대로 */}
         </p>
-        <span className="text-xs font-medium" style={{ color: analysis.color }}>
-          {analysis.label}
-        </span>
+
+        <div className="flex flex-col items-end gap-0.5 text-right">
+          <span
+            className="text-xs font-medium"
+            style={{ color: analysis.color }}
+          >
+            {analysis.label}
+          </span>
+          {analysis.anomalyNote && (
+            <span className="text-[11px] text-muted-foreground">
+              {analysis.anomalyNote}
+            </span>
+          )}
+        </div>
       </div>
 
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full"
-        height={110}
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={analysis.color} stopOpacity={0.28} />
-            <stop offset="100%" stopColor={analysis.color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-
-        <polygon points={areaPoints} fill="url(#trendFill)" />
-
-        <polyline
-          points={solidPoints}
-          fill="none"
-          stroke={analysis.color}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {liveIndex > 0 && (
-          <line
-            x1={coords[liveIndex - 1][0]}
-            y1={coords[liveIndex - 1][1]}
-            x2={coords[liveIndex][0]}
-            y2={coords[liveIndex][1]}
-            stroke={analysis.color}
-            strokeWidth={2}
-            strokeDasharray="4 3"
-            strokeLinecap="round"
-          />
-        )}
-
-        {coords.map(([x, y], i) => {
-          if (i === liveIndex) {
-            return (
-              <circle
-                key={i}
-                cx={x}
-                cy={y}
-                r={4}
-                fill="#0d1117"
-                stroke={analysis.color}
-                strokeWidth={2}
-              />
-            );
-          }
-          if (anomalyDates.has(combined[i].date)) {
-            return (
-              <circle
-                key={i}
-                cx={x}
-                cy={y}
-                r={4}
-                fill="#fbbf24"
-                stroke="#0d1117"
-                strokeWidth={1.5}
-              />
-            );
-          }
-          return null;
-        })}
-      </svg>
+      <ConsistencyStrip
+        rows={combined}
+        anomalyDates={anomalyDates}
+        liveIndex={liveIndex}
+        color={analysis.color}
+      />
 
       <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
         <span>{combined[0]?.date}</span>
@@ -568,7 +689,7 @@ function TrendArea({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-3 border-t pt-3 text-center">
+      <div className="mt-4 grid grid-cols-4 gap-3 border-t pt-3 text-center">
         <div>
           <p className="text-[11px] text-muted-foreground">일관성</p>
           <p className="text-sm font-semibold">{analysis.consistencyScore}점</p>
@@ -594,6 +715,10 @@ function TrendArea({
             {Math.round(analysis.momentumPct)}%
           </p>
         </div>
+        <div>
+          <p className="text-[11px] text-muted-foreground">피크</p>
+          <p className="text-sm font-semibold">{peakLabel}</p>
+        </div>
       </div>
     </div>
   );
@@ -603,9 +728,9 @@ export function ViewerConcentrationSection({
   viewerPercentile,
   countPercentile,
   viewerRank,
-  countRank,
+
   viewerTieCount,
-  countTieCount,
+
   totalGames,
   totalCountAll,
   viewerShare,
@@ -615,7 +740,39 @@ export function ViewerConcentrationSection({
   todayLabel,
   currentCount,
 }: Props) {
-  const quadrant = classify(currentViewers ?? 0, currentCount);
+  const base = (trendRows ?? []).slice(-13);
+  const hasLive =
+    currentViewers != null &&
+    !!todayLabel &&
+    todayLabel !== base[base.length - 1]?.date;
+
+  const combined: TrendRow[] = hasLive
+    ? [
+        ...base,
+        {
+          date: todayLabel!,
+          concurrentViewers: currentViewers!,
+          broadcastCount: currentCount,
+        },
+      ]
+    : base;
+
+  const analysis = combined.length >= 4 ? analyzeTrend(combined) : null;
+
+  // "오늘"(가장 최근 날짜)이 이 게임 기준으로 튀었고, 소수 방송에 몰린 이상치인지
+  const todayEntry = combined[combined.length - 1];
+  const todayIsConcentratedSpike =
+    !!todayEntry &&
+    !!analysis &&
+    analysis.anomalies.some(
+      (a) => a.date === todayEntry.date && a.isConcentrated,
+    );
+
+  const quadrant = classify(
+    currentViewers ?? 0,
+    currentCount,
+    todayIsConcentratedSpike,
+  );
 
   return (
     <Card>
@@ -678,12 +835,12 @@ export function ViewerConcentrationSection({
         </div>
 
         <div className="flex items-center border-t pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
-          {trendRows && trendRows.length >= 3 ? (
+          {analysis ? (
             <div className="w-full">
               <TrendArea
-                rows={trendRows}
-                liveViewers={currentViewers}
-                liveLabel={todayLabel}
+                combined={combined}
+                hasLive={hasLive}
+                analysis={analysis}
               />
             </div>
           ) : (
