@@ -268,3 +268,13 @@
 .recharts-surface:focus {
   outline: none;
 }
+@media (max-width: 767px) {
+  html {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar {
+    display: none; /* Chrome, Samsung Internet 등 */
+  }
+}
