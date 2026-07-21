@@ -241,7 +241,8 @@ export function StreamerTrendChart({ trendRows }: Props) {
               {(metric === "maxViewers"
                 ? activeRow.maxViewers
                 : activeRow.concurrentViewers
-              ).toLocaleString()}
+              ).toLocaleString()}{" "}
+              명
             </span>
           </div>
 
