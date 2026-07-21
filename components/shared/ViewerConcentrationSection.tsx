@@ -277,16 +277,9 @@ function classify(
 ) {
   const base = classifyQuadrant(currentViewers, currentCount);
 
-  if (!isConcentratedSpike) {
-    return { ...base, isStreamerDriven: false };
-  }
-
   return {
     ...base,
-    label: "대형 스트리머 효과",
-    desc: "오늘 시청자가 평소 패턴을 벗어나 급증했고, 소수 방송에 몰려 있어요 — 게임 자체의 인기도보다 대회·합방·광고 같은 일회성 이벤트의 영향으로 보여요.",
-    color: "#f472b6",
-    isStreamerDriven: true,
+    isStreamerDriven: !!isConcentratedSpike,
   };
 }
 function rankColor(percentile: number, base: string) {
@@ -401,11 +394,12 @@ function ConsistencyStrip({
   const range = max - min || 1;
 
   return (
-    <div className="flex items-end gap-1" style={{ height: 112 }}>
+    <div className="flex items-end gap-1 flex-1 min-h-[80px]">
       {rows.map((row, i) => {
         const heightPct = ((row.concurrentViewers - min) / range) * 100;
         const isAnomaly = anomalyDates.has(row.date);
         const isLive = i === liveIndex;
+        const isNearEnd = i >= rows.length - 3; // 마지막 3개는 왼쪽으로
 
         return (
           <div key={row.date} className="group relative flex-1 h-full">
@@ -418,7 +412,13 @@ function ConsistencyStrip({
                 border: isLive ? `1px dashed ${color}` : undefined,
               }}
             />
-            <div className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded bg-background px-1.5 py-0.5 text-[10px] shadow-sm opacity-0 group-hover:opacity-100">
+            <div
+              className={`pointer-events-none absolute -top-6 z-10 whitespace-nowrap rounded bg-background px-1.5 py-0.5 text-[10px] shadow-sm opacity-0 group-hover:opacity-100 ${
+                isNearEnd
+                  ? "right-0" // 오른쪽 끝 기준으로 붙임
+                  : "left-1/2 -translate-x-1/2" // 나머지는 중앙
+              }`}
+            >
               {row.date}
               {isLive ? " (진행 중)" : ""} ·{" "}
               {row.concurrentViewers.toLocaleString()}명
@@ -548,7 +548,15 @@ function analyzeTrend(rows: TrendRow[]) {
 
   const decliningFromPeak =
     daysSincePeak > 0 && daysSincePeak <= 4 && momentumPct <= -15;
-
+  //   console.log({
+  //     rawAnomalies: rawAnomalies.map((a) => ({ date: a.date, z: a.z })),
+  //     normalIdx,
+  //     baselineVPB,
+  //     anomalies: anomalies.map((a) => ({
+  //       date: a.date,
+  //       isConcentrated: a.isConcentrated,
+  //     })),
+  //   });
   if (diverging && trendChangePct > 0) {
     label = `기간 전체로는 상승세지만(+${Math.round(trendChangePct)}%), 최근 들어 꺾였어요(${Math.round(momentumPct)}%)`;
     color = "#fb923c";
@@ -650,12 +658,11 @@ function TrendArea({
         : `${analysis.daysSincePeak}일 전`;
 
   return (
-    <div>
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+    <div className="flex flex-col h-full">
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-2">
         <p className="flex items-center gap-1.5 text-sm font-medium">
           <LineChart className="h-4 w-4 text-muted-foreground" />
           인기 지속성 · 최근 {combined.length}일
-          {/* Info 아이콘 툴팁은 그대로 */}
         </p>
 
         <div className="flex flex-col items-end gap-0.5 text-right">
@@ -680,7 +687,7 @@ function TrendArea({
         color={analysis.color}
       />
 
-      <div className="mt-1.5 flex justify-between text-[11px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
         <span>{combined[0]?.date}</span>
         <span>
           {hasLive
@@ -689,7 +696,7 @@ function TrendArea({
         </span>
       </div>
 
-      <div className="mt-4 grid grid-cols-4 gap-3 border-t pt-3 text-center">
+      <div className="mt-1 grid grid-cols-4 gap-3 border-t pt-3 text-center">
         <div>
           <p className="text-[11px] text-muted-foreground">일관성</p>
           <p className="text-sm font-semibold">{analysis.consistencyScore}점</p>
@@ -782,7 +789,7 @@ export function ViewerConcentrationSection({
           전체 게임 대비 순위와 최근 추이
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-6 pb-4 md:grid-cols-[minmax(0,350px)_1fr]">
+      <CardContent className="grid grid-cols-1 gap-6 pb-4 md:grid-cols-[minmax(0,350px)_1fr] md:items-stretch">
         <div className="space-y-4">
           <div className="flex gap-3">
             <RankBadge
@@ -832,11 +839,39 @@ export function ViewerConcentrationSection({
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center border-t pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0">
+          {/* ↓ 대형 스트리머 효과 별도 카드 */}
+          {quadrant.isStreamerDriven && (
+            <div
+              className="flex items-start gap-2.5 rounded-lg border px-3 py-3"
+              style={{
+                borderColor: "#f472b633",
+                background: "#f472b60f",
+              }}
+            >
+              <Zap
+                className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                style={{ color: "#f472b6" }}
+              />
+              <div>
+                <p
+                  className="text-sm font-semibold"
+                  style={{ color: "#f472b6" }}
+                >
+                  대형 스트리머 효과
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  오늘 시청자가 평소 패턴을 벗어나 급증했고, 소수 방송에 몰려
+                  있어요 — 대회·광고 같은 일회성 이벤트나 특정 스트리머의 영향일
+                  수 있어요.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col justify-between border-t pt-4 md:border-l md:border-t-0 md:pl-6 md:pt-0 md:h-full">
           {analysis ? (
-            <div className="w-full">
+            <div className="w-full h-full flex flex-col">
               <TrendArea
                 combined={combined}
                 hasLive={hasLive}
