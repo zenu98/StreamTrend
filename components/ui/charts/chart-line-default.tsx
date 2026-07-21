@@ -108,7 +108,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
               />
               <Line
                 dataKey={dataKey as string}
-                type="monotone"
+                type="linear"
                 stroke={`var(--color-${String(dataKey)})`}
                 strokeWidth={2}
                 dot={false}
