@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Info } from "lucide-react";
 import { Suspense } from "react";
+import { GameSearch } from "@/components/game/GameSearch";
 
 export default function GamesPage() {
   return <GamesContent />;
@@ -25,6 +26,9 @@ async function GamesContent() {
         </p>
       </div>
       <h1 className="text-2xl font-bold my-6">게임 카테고리</h1>
+
+      <GameSearch games={games} />
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {games.map((game) => (
           <Link
