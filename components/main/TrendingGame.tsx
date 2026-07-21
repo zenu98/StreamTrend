@@ -213,18 +213,18 @@ function GameRankingBody({
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/10" />
             <div className="absolute inset-0 flex items-center gap-4 px-4">
-              <div
+              {/* <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
                 style={{ background: "#f59e0b", color: "#000" }}
               >
                 1
-              </div>
+              </div> */}
               <div className="min-w-0">
-                <p className="text-white/70 text-xs truncate">
+                <p className="text-white/80 font-semibold text-sm truncate">
                   {top3[0].category}
                 </p>
                 <p
-                  className="text-white text-3xl leading-none mt-0.5"
+                  className="text-white text-4xl leading-none mt-0.5"
                   style={{ fontFamily: "var(--font-anton)" }}
                 >
                   {(top3[0][valueKey] ?? 0).toLocaleString()}
@@ -262,18 +262,18 @@ function GameRankingBody({
                   <div className="absolute inset-0 bg-muted" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
-                <div
+                {/* <div
                   className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
                   style={{ background: badgeBg, color: badgeTextColor }}
                 >
                   {rank}
-                </div>
+                </div> */}
                 <div className="absolute bottom-2 left-2 right-2">
-                  <p className="text-white/70 text-[10px] truncate">
+                  <p className="text-white/80 font-semibold text-xs truncate">
                     {game.category}
                   </p>
                   <p
-                    className="text-white text-xl leading-tight"
+                    className="text-white text-2xl leading-tight"
                     style={{ fontFamily: "var(--font-anton)" }}
                   >
                     {(game[valueKey] ?? 0).toLocaleString()}
@@ -290,7 +290,7 @@ function GameRankingBody({
             <Link
               key={game.categoryId}
               href={`/games/${encodeURIComponent(game.categoryId)}`}
-              className="relative h-20 overflow-hidden rounded-xl"
+              className="relative h-24 overflow-hidden rounded-xl"
             >
               {game.posterImageUrl ? (
                 <Image
@@ -304,15 +304,15 @@ function GameRankingBody({
                 <div className="absolute inset-0 bg-muted" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
-              <div className="absolute top-1.5 left-2 text-white/50 text-[10px] font-semibold">
+              {/* <div className="absolute top-1.5 left-2 text-white/50 text-[10px] font-semibold">
                 {idx + 4}위
-              </div>
+              </div> */}
               <div className="absolute bottom-2 left-2 right-2">
-                <p className="text-white/70 text-[10px] truncate">
+                <p className="text-white/80 text-[10px] truncate font-semibold">
                   {game.category}
                 </p>
                 <p
-                  className="text-white text-base leading-tight"
+                  className="text-white text-xl leading-tight"
                   style={{ fontFamily: "var(--font-anton)" }}
                 >
                   {(game[valueKey] ?? 0).toLocaleString()}
