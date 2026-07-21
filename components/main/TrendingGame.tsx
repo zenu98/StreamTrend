@@ -190,80 +190,217 @@ function GameRankingBody({
 
   return (
     <>
-      <div className="flex justify-center items-start gap-3 md:gap-8">
-        {podiumOrder.map((game, idx) => {
-          if (!game) return null;
-          const rank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
-          return (
-            <PodiumItem
-              key={`podium-${game.categoryId}`}
-              game={game}
-              rank={rank}
-              showStreamer={showStreamer}
-              valueKey={valueKey}
-            />
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3">
-        {rest.map((game, idx) => (
+      {/* ── 모바일 전용 레이아웃 ── */}
+      <div className="md:hidden space-y-2">
+        {/* 1위 — 가로 배너 */}
+        {top3[0] && (
           <Link
-            key={`list-${game.categoryId}`}
-            href={`/games/${encodeURIComponent(game.categoryId)}`}
-            className={`relative aspect-3/4 rounded-xl overflow-hidden group ${
-              idx >= 6 ? "hidden md:block" : ""
-            }`}
+            href={`/games/${encodeURIComponent(top3[0].categoryId)}`}
+            className="relative flex h-32 overflow-hidden rounded-2xl border-2"
+            style={{ borderColor: "#f59e0b" }}
           >
-            {game.posterImageUrl ? (
+            {top3[0].posterImageUrl ? (
               <Image
-                src={game.posterImageUrl}
-                alt={game.category}
+                src={top3[0].posterImageUrl}
+                alt={top3[0].category}
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                sizes="(max-width: 768px) 50vw, 25vw"
+                className="object-cover"
+                sizes="100vw"
+                priority
               />
             ) : (
               <div className="absolute inset-0 bg-muted" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/60" />
-            <div className="absolute top-2 left-2 w-5 h-5 md:w-6 md:h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
-              {idx + 4}
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center flex-col gap-1">
-              <span className="text-2xl md:text-5xl lg:text-6xl font-bold text-gray-200 leading-none [font-family:var(--font-anton)] tracking-widest">
-                {(game[valueKey] ?? 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
-              <p className="text-xs md:text-sm font-medium text-white truncate mb-1 md:mb-2">
-                {game.category}
-              </p>
-              {showStreamer && game.topStreamer && (
-                <div className="flex items-center gap-1 md:gap-2">
-                  <div className="w-5 h-5 md:w-8 md:h-8 rounded-full overflow-hidden relative border border-white/30 flex-shrink-0">
-                    {game.topStreamer.channelImageUrl ? (
-                      <Image
-                        src={game.topStreamer.channelImageUrl}
-                        alt={game.topStreamer.channelName}
-                        fill
-                        className="object-cover"
-                        sizes="32px"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-white">
-                        {game.topStreamer.channelName[0]}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] md:text-xs text-white/80 truncate">
-                    {game.topStreamer.channelName}
-                  </span>
-                </div>
-              )}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/10" />
+            <div className="absolute inset-0 flex items-center gap-4 px-4">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                style={{ background: "#f59e0b", color: "#000" }}
+              >
+                1
+              </div>
+              <div className="min-w-0">
+                <p className="text-white/70 text-xs truncate">
+                  {top3[0].category}
+                </p>
+                <p
+                  className="text-white text-3xl leading-none mt-0.5"
+                  style={{ fontFamily: "var(--font-anton)" }}
+                >
+                  {(top3[0][valueKey] ?? 0).toLocaleString()}
+                </p>
+              </div>
             </div>
           </Link>
-        ))}
+        )}
+
+        {/* 2·3위 — 2열 카드 */}
+        <div className="grid grid-cols-2 gap-2">
+          {[top3[1], top3[2]].map((game, i) => {
+            if (!game) return null;
+            const rank = i + 2;
+            const borderColor = rank === 2 ? "#9ca3af" : "#b45309";
+            const badgeBg = rank === 2 ? "#9ca3af" : "#b45309";
+            const badgeTextColor = rank === 2 ? "#000" : "#fff";
+            return (
+              <Link
+                key={game.categoryId}
+                href={`/games/${encodeURIComponent(game.categoryId)}`}
+                className="relative h-28 overflow-hidden rounded-xl border-2"
+                style={{ borderColor }}
+              >
+                {game.posterImageUrl ? (
+                  <Image
+                    src={game.posterImageUrl}
+                    alt={game.category}
+                    fill
+                    className="object-cover"
+                    sizes="50vw"
+                    priority
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-muted" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+                <div
+                  className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ background: badgeBg, color: badgeTextColor }}
+                >
+                  {rank}
+                </div>
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-white/70 text-[10px] truncate">
+                    {game.category}
+                  </p>
+                  <p
+                    className="text-white text-xl leading-tight"
+                    style={{ fontFamily: "var(--font-anton)" }}
+                  >
+                    {(game[valueKey] ?? 0).toLocaleString()}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* 4~9위 — 2열 콤팩트 카드 */}
+        <div className="grid grid-cols-2 gap-2">
+          {rest.slice(0, 6).map((game, idx) => (
+            <Link
+              key={game.categoryId}
+              href={`/games/${encodeURIComponent(game.categoryId)}`}
+              className="relative h-20 overflow-hidden rounded-xl"
+            >
+              {game.posterImageUrl ? (
+                <Image
+                  src={game.posterImageUrl}
+                  alt={game.category}
+                  fill
+                  className="object-cover"
+                  sizes="50vw"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-muted" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+              <div className="absolute top-1.5 left-2 text-white/50 text-[10px] font-semibold">
+                {idx + 4}위
+              </div>
+              <div className="absolute bottom-2 left-2 right-2">
+                <p className="text-white/70 text-[10px] truncate">
+                  {game.category}
+                </p>
+                <p
+                  className="text-white text-base leading-tight"
+                  style={{ fontFamily: "var(--font-anton)" }}
+                >
+                  {(game[valueKey] ?? 0).toLocaleString()}
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ── 데스크톱 기존 레이아웃 ── */}
+      <div className="hidden md:block space-y-6">
+        <div className="flex justify-center items-start gap-8">
+          {podiumOrder.map((game, idx) => {
+            if (!game) return null;
+            const rank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+            return (
+              <PodiumItem
+                key={`podium-${game.categoryId}`}
+                game={game}
+                rank={rank}
+                showStreamer={showStreamer}
+                valueKey={valueKey}
+              />
+            );
+          })}
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
+          {rest.map((game, idx) => (
+            <Link
+              key={`list-${game.categoryId}`}
+              href={`/games/${encodeURIComponent(game.categoryId)}`}
+              className="relative aspect-3/4 rounded-xl overflow-hidden group"
+            >
+              {game.posterImageUrl ? (
+                <Image
+                  src={game.posterImageUrl}
+                  alt={game.category}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="25vw"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-muted" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/60" />
+              <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
+                {idx + 4}
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span
+                  className="text-5xl lg:text-6xl text-gray-200 leading-none tracking-widest"
+                  style={{ fontFamily: "var(--font-anton)" }}
+                >
+                  {(game[valueKey] ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <p className="text-sm font-medium text-white truncate mb-2">
+                  {game.category}
+                </p>
+                {showStreamer && game.topStreamer && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white/30 flex-shrink-0">
+                      {game.topStreamer.channelImageUrl ? (
+                        <Image
+                          src={game.topStreamer.channelImageUrl}
+                          alt={game.topStreamer.channelName}
+                          fill
+                          className="object-cover"
+                          sizes="32px"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-white">
+                          {game.topStreamer.channelName[0]}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-white/80 truncate">
+                      {game.topStreamer.channelName}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
       </div>
     </>
   );

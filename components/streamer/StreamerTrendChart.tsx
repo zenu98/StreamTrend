@@ -7,7 +7,7 @@ import { CalendarDays, Users, Clock } from "lucide-react";
 import { ChartLineDefault } from "../ui/charts/chart-line-default";
 import { DateRangePicker } from "@/components/shared/DateRangePicker";
 import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, formatKoreanDate } from "@/lib/utils";
 
 type GameBreakdown = {
   category: string;
@@ -59,6 +59,7 @@ function StreamerTrendTooltip(props: any) {
           className="h-2.5 w-2.5 rounded-full"
           style={{ background: "var(--chart-1)" }}
         />
+
         {headerLabel}
         <span className="ml-auto">{headerValue.toLocaleString()}</span>
       </div>
@@ -73,7 +74,7 @@ function StreamerTrendTooltip(props: any) {
                 <p className="text-xs font-medium text-foreground">
                   {g.category}
                 </p>
-                <p className="mt-0.5 flex gap-3 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 flex gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
                     {gameValueLabel} {gameValue.toLocaleString()}명
@@ -84,7 +85,7 @@ function StreamerTrendTooltip(props: any) {
                   </span>
                 </p>
                 {g.liveTitle && (
-                  <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground/60">
+                  <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
                     {g.liveTitle}
                   </p>
                 )}
@@ -93,6 +94,11 @@ function StreamerTrendTooltip(props: any) {
           })}
         </div>
       )}
+      <div className="flex justify-end ">
+        <span className=" text-xs text-muted-foreground/90">
+          {formatKoreanDate(row.displayDate)}
+        </span>
+      </div>
     </div>
   );
 }

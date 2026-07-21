@@ -54,7 +54,7 @@ export function ChartBarMixed<T extends BaseCategoryData>({
   };
 
   const yAxisWidth = useMemo(() => {
-    const font = "12px sans-serif";
+    const font = "14px sans-serif";
     const widths = data.map((d) => measureTextWidth(String(d.category), font));
     return Math.max(...widths, 40) + 16; // 실측 최대값 + 여유 패딩
   }, [data]);
@@ -92,7 +92,7 @@ export function ChartBarMixed<T extends BaseCategoryData>({
                   y={y}
                   textAnchor="start"
                   dominantBaseline="middle"
-                  fontSize={12}
+                  fontSize="var(--text-xs)"
                   fill="#fff"
                 >
                   {payload.value}
@@ -123,7 +123,7 @@ export function ChartBarMixed<T extends BaseCategoryData>({
                       y={(y as number) + (height as number) / 1.9}
                       textAnchor={insideRight ? "end" : "start"}
                       dominantBaseline="middle"
-                      fontSize={12}
+                      fontSize="var(--text-xs)"
                       fill={insideRight ? "white" : "#767676"}
                     >
                       {text}
