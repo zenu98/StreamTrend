@@ -21,8 +21,7 @@ const anton = Anton({
   variable: "--font-anton",
 });
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL ?? "https://stream-trend-roan.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://streamtrend.xyz";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

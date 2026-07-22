@@ -1,8 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_BASE_URL ?? "https://stream-trend-roan.vercel.app";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://streamtrend.xyz";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [categories, streamers] = await Promise.all([
