@@ -20,6 +20,8 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    minimumCacheTTL: 86400, // 이미지 최적화 캐싱 시간 24시간
+
     remotePatterns: [
       {
         protocol: "https",
