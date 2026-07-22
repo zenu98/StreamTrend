@@ -8,13 +8,20 @@ function getKSTDayBoundary(baseDate: Date, offsetDays = 0): Date {
   return new Date(kstDay.getTime() - 9 * 60 * 60 * 1000);
 }
 
-export async function summarizeYesterday(targetDate?: Date) {
+export async function summarizeYesterday(
+  targetDate?: Date,
+  fromOverride?: Date,
+  toOverride?: Date,
+) {
   const base = targetDate ?? new Date();
 
   let from: Date;
   let to: Date;
 
-  if (targetDate) {
+  if (fromOverride && toOverride) {
+    from = fromOverride;
+    to = toOverride;
+  } else if (targetDate) {
     from = getKSTDayBoundary(targetDate, 0);
     to = getKSTDayBoundary(targetDate, 1);
   } else {
