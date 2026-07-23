@@ -84,4 +84,5 @@ model Streamer {
   channelImageUrl String?
   updatedAt       DateTime @updatedAt
   followerCount   Int      @default(0)
+  verifiedMark    Boolean  @default(false)
 }

@@ -1,17 +1,13 @@
-import { prisma } from "@/lib/prisma";
-
 export async function GET() {
-  const rows = await prisma.$queryRaw<{ day: string; count: bigint }[]>`
-    SELECT to_char("collectedAt" + interval '9 hours', 'YYYY-MM-DD') as day, COUNT(*) as count
-    FROM "LiveSnapshot"
-    GROUP BY day
-    ORDER BY day ASC
-  `;
-  const result = rows.map((r) => ({ day: r.day, count: Number(r.count) }));
-  const total = result.reduce((sum, r) => sum + r.count, 0);
-  return Response.json({
-    totalRows: total,
-    dayCount: result.length,
-    rows: result,
-  });
+  const res = await fetch(
+    "https://openapi.chzzk.naver.com/open/v1/channels?channelIds=dc740d5bb5680666b6bf2ebc58a8203f",
+    {
+      headers: {
+        "Client-Id": process.env.CHZZK_CLIENT_ID!,
+        "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
+      },
+    },
+  );
+  const json = await res.json();
+  return Response.json(json);
 }

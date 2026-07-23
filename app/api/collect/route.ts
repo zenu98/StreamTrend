@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         channelId: live.channelId,
         channelName: live.channelName,
         channelImageUrl: live.channelImageUrl,
-        followerCount: live.followerCount ?? 0,
+
         collectedAt,
       })),
     });
@@ -91,13 +91,11 @@ export async function GET(request: Request) {
         update: {
           channelName: live.channelName,
           channelImageUrl: live.channelImageUrl ?? null,
-          followerCount: live.followerCount ?? 0,
         },
         create: {
           channelId: live.channelId,
           channelName: live.channelName,
           channelImageUrl: live.channelImageUrl ?? null,
-          followerCount: live.followerCount ?? 0,
         },
       }),
     ),
@@ -155,7 +153,7 @@ export async function GET(request: Request) {
   // console.log("existingIds count:", existingIds.length);
 
   revalidatePath("/");
-  console.log("followerCount sample:", streamers[0]?.followerCount);
+
   return Response.json({
     success: true,
     totalSaved,
