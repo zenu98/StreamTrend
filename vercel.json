@@ -9,6 +9,6 @@
       "schedule": "0 21 * * *"
     },
     { "path": "/api/update-thumbnails", "schedule": "0 21 * * *" },
-    { "path": "/api/update-streamers", "schedule": "0 21 * * *" }
+    { "path": "/api/update-streamers", "schedule": "0 21 * * 0" }
   ]
 }

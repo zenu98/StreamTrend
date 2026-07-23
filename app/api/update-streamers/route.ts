@@ -45,7 +45,7 @@ export async function GET(request: Request) {
             },
           });
           updated++;
-        } catch {
+        } catch (e) {
           failed++;
         }
       }),
