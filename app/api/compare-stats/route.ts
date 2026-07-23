@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { toKSTDateString } from "@/lib/utils";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,15 +11,17 @@ export async function GET(request: Request) {
     return Response.json({ error: "missing params" }, { status: 400 });
   }
 
+  const toDate = new Date(to);
+  toDate.setDate(toDate.getDate() + 1);
+
   const rows = await prisma.dailySummary.findMany({
     where: {
       liveCategory: { in: games },
-      date: { gte: new Date(from), lte: new Date(to) },
+      date: { gte: new Date(from), lt: toDate },
     },
     orderBy: { date: "asc" },
   });
 
-  // 게임별로 구조화
   const gameMap = new Map<
     string,
     Map<
@@ -32,11 +35,11 @@ export async function GET(request: Request) {
   >();
 
   for (const row of rows) {
-    const date = row.date.toISOString().slice(5, 10);
-    if (!gameMap.has(row.liveCategoryValue)) {
-      gameMap.set(row.liveCategoryValue, new Map());
+    const date = toKSTDateString(row.date);
+    if (!gameMap.has(row.liveCategory)) {
+      gameMap.set(row.liveCategory, new Map());
     }
-    gameMap.get(row.liveCategoryValue)!.set(date, {
+    gameMap.get(row.liveCategory)!.set(date, {
       concurrentViewers:
         row.snapshotCount > 0
           ? Math.round(row.totalViewers / row.snapshotCount)
@@ -47,13 +50,13 @@ export async function GET(request: Request) {
   }
 
   const allDates = [
-    ...new Set(rows.map((r) => r.date.toISOString().slice(5, 10))),
+    ...new Set(rows.map((r) => toKSTDateString(r.date))),
   ].sort();
 
   const result = {
     dates: allDates,
-    games: Array.from(gameMap.entries()).map(([game, dateMap]) => ({
-      game,
+    games: Array.from(gameMap.entries()).map(([categoryId, dateMap]) => ({
+      categoryId,
       data: allDates.map((date) => ({
         date,
         concurrentViewers: dateMap.get(date)?.concurrentViewers ?? 0,

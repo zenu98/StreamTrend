@@ -97,10 +97,11 @@ export function GameCompareChart({
     const data = await res.json();
     setLoading(false);
 
-    if (data.games?.[0]) {
+    const found = data.games?.find((d: any) => d.categoryId === categoryId);
+    if (found) {
       setExtraGames((prev) => [
         ...prev,
-        { game, categoryId, data: data.games[0].data },
+        { game, categoryId, data: found.data },
       ]);
     }
     onSelectedChange([...selected, game]);
@@ -231,7 +232,7 @@ export function GameCompareChart({
                 <Area
                   key={game}
                   dataKey={game}
-                  type="natural"
+                  type="monotone"
                   fill={COLORS[i % COLORS.length]}
                   fillOpacity={0.2}
                   stroke={COLORS[i % COLORS.length]}
