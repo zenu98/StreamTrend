@@ -133,20 +133,19 @@ async function GameDetail({
         />
       </section>
 
-      {/* 역대 최고 시청자 랭킹 */}
-      <section className="space-y-4">
-        <GameTopStreamers
-          topRecords={topStreamers.topRecords}
-          topChannels={topStreamers.topChannels}
-        />
-      </section>
-
-      <section className="space-y-4 mt-24">
+      <section className="space-y-4 ">
         <GameChartTabs
           allRows={stats.allRows}
           defaultGame={categoryInfo?.categoryValue ?? ""}
           defaultCategoryId={categoryId}
           allCategories={allCategories}
+        />
+      </section>
+      {/* 역대 최고 시청자 랭킹 */}
+      <section className="space-y-4">
+        <GameTopStreamers
+          topRecords={topStreamers.topRecords}
+          topChannels={topStreamers.topChannels}
         />
       </section>
     </main>
