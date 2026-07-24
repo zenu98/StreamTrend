@@ -211,6 +211,7 @@ export function GameCompareChart({
                 interval="preserveStartEnd"
               />
               <YAxis
+                width={40}
                 tickLine={false}
                 axisLine={false}
                 tick={{ fontSize: 11, fill: "rgba(255,255,255,0.4)" }}

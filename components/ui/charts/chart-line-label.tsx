@@ -49,7 +49,7 @@ export function ChartLineLabel({
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-2 md:p-6">
+      <CardContent className="space-y-4">
         {chartData.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-sm text-muted-foreground">
             데이터 없음
@@ -58,7 +58,7 @@ export function ChartLineLabel({
           <ChartContainer config={chartConfig} className="w-full h-40 md:h-64">
             <LineChart
               data={chartData}
-              margin={{ top: 24, left: 12, right: 12, bottom: 0 }}
+              margin={{ top: 20, left: 14, right: 12, bottom: 0 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
