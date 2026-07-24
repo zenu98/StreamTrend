@@ -16,7 +16,65 @@ type Props = {
   streamers: Streamer[];
 };
 
+function avgViewers(s: Streamer) {
+  return s.totalViewers > 0 && s.broadcastCount > 0
+    ? Math.round(s.totalViewers / s.broadcastCount)
+    : 0;
+}
+
+function BlurBg({ url }: { url: string | null }) {
+  if (!url) return <div className="absolute inset-0 bg-white/10" />;
+  return (
+    <Image
+      src={url}
+      alt=""
+      fill
+      className="object-cover scale-110"
+      sizes="100vw"
+      style={{ filter: "blur(1px) brightness(0.35)" }}
+    />
+  );
+}
+
+function ProfileCircle({
+  url,
+  name,
+  borderColor,
+}: {
+  url: string | null;
+  name: string;
+  borderColor?: string;
+}) {
+  return (
+    <div
+      className="w-10 h-10 md:w-14 md:h-14 rounded-full overflow-hidden flex-shrink-0"
+      style={{
+        border: borderColor
+          ? `2px solid ${borderColor}`
+          : "2px solid rgba(255,255,255,0.2)",
+      }}
+    >
+      {url ? (
+        <Image
+          src={url}
+          alt={name}
+          width={64}
+          height={64}
+          className="object-cover w-full h-full"
+        />
+      ) : (
+        <div className="w-full h-full bg-white/10 flex items-center justify-center text-white text-sm">
+          {name[0]}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TrendingStreamer({ streamers }: Props) {
+  const top3 = streamers.slice(0, 3);
+  const rest = streamers.slice(3, 9);
+
   return (
     <section className="space-y-0 w-full px-4 md:px-0">
       <div className="text-center mt-8 md:mt-16 mb-4 md:mb-8">
@@ -40,82 +98,120 @@ export function TrendingStreamer({ streamers }: Props) {
         </div>
       </div>
 
-      {streamers.map((streamer, idx) => {
-        const rank = idx + 1;
-        const isTop3 = rank <= 3;
-        const rankColor =
-          rank === 1
-            ? "#f59e0b"
-            : rank === 2
-              ? "#9ca3af"
-              : rank === 3
-                ? "#b45309"
-                : "rgba(255,255,255,0.3)";
-        const rankSize = isTop3
-          ? "text-lg md:text-xl font-bold"
-          : "text-sm font-medium";
-
-        return (
+      <div className="space-y-2">
+        {/* 1위 — 가로 배너 */}
+        {top3[0] && (
           <Link
-            key={streamer.channelId}
-            href={`/streamers/${streamer.channelId}`}
-            className="flex items-center gap-3 md:gap-4 py-3 border-b border-white/10 hover:bg-white/5 transition-colors rounded-lg px-2"
+            href={`/streamers/${top3[0].channelId}`}
+            className="relative flex h-28 md:h-48 overflow-hidden rounded-2xl border-2"
+            style={{ borderColor: "#f59e0b" }}
           >
-            <span
-              className={`w-5 md:w-6 text-center ${rankSize} flex-shrink-0`}
-              style={{ color: rankColor }}
-            >
-              {rank}
-            </span>
-
-            <div
-              className="w-9 h-9 md:w-11 md:h-11 rounded-full overflow-hidden relative flex-shrink-0"
-              style={{
-                border: isTop3
-                  ? `2px solid ${rankColor}`
-                  : "2px solid rgba(255,255,255,0.1)",
-              }}
-            >
-              {streamer.channelImageUrl ? (
-                <Image
-                  src={streamer.channelImageUrl}
-                  alt={streamer.channelName}
-                  fill
-                  className="object-cover"
-                  sizes="44px"
-                />
-              ) : (
-                <div className="w-full h-full bg-white/10 flex items-center justify-center text-white text-sm">
-                  {streamer.channelName[0]}
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-xs md:text-sm font-semibold text-white truncate">
-                {streamer.channelName}
-              </p>
-              <p className="text-xs md:text-xs text-white/40 mt-0.5 truncate">
-                {streamer.topGames.join(" · ")}
-              </p>
-            </div>
-
-            <div className="text-right flex-shrink-0">
-              <p className="text-xs md:text-sm font-semibold text-white">
-                {streamer.totalViewers > 0 && streamer.broadcastCount > 0
-                  ? Math.round(
-                      streamer.totalViewers / streamer.broadcastCount,
-                    ).toLocaleString()
-                  : 0}
-                명
-              </p>
-              <p className="text-[10px] md:text-xs text-white/40 mt-0.5">
-                최고 {streamer.maxViewers.toLocaleString()}명
-              </p>
+            <BlurBg url={top3[0].channelImageUrl} />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 flex items-center gap-3 px-3">
+              <ProfileCircle
+                url={top3[0].channelImageUrl}
+                name={top3[0].channelName}
+                borderColor="#f59e0b"
+              />
+              <div className="min-w-0 flex-1 items-center">
+                <p className="text-white font-bold md:text-2xl truncate">
+                  {top3[0].channelName}
+                </p>
+                <p className="text-white/60 text-xs md:text-sm truncate ">
+                  {top3[0].topGames.join(" · ")}
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p
+                  className="text-white text-3xl md:text-6xl leading-none "
+                  style={{ fontFamily: "var(--font-anton)" }}
+                >
+                  {avgViewers(top3[0]).toLocaleString()}
+                </p>
+              </div>
             </div>
           </Link>
-        );
-      })}
+        )}
+
+        {/* 2·3위 — 2열 카드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {[top3[1], top3[2]].map((streamer, i) => {
+            if (!streamer) return null;
+            const rank = i + 2;
+            const borderColor = rank === 2 ? "#9ca3af" : "#b45309";
+            return (
+              <Link
+                key={streamer.channelId}
+                href={`/streamers/${streamer.channelId}`}
+                className="relative h-24 md:h-40 overflow-hidden rounded-xl border-2"
+                style={{ borderColor }}
+              >
+                <BlurBg url={streamer.channelImageUrl} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute inset-0 flex items-center gap-3 px-3">
+                  <ProfileCircle
+                    url={streamer.channelImageUrl}
+                    name={streamer.channelName}
+                  />
+                  <div className="min-w-0 flex-1 items-center">
+                    <p className="text-white font-bold md:text-xl truncate">
+                      {streamer.channelName}
+                    </p>
+                    <p className="text-white/60 text-xs md:text-sm truncate">
+                      {streamer.topGames.join(" · ")}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p
+                      className="text-white text-3xl md:text-5xl leading-tight"
+                      style={{ fontFamily: "var(--font-anton)" }}
+                    >
+                      {avgViewers(streamer).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* 4~11위 — 2열 콤팩트 카드 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 ">
+          {rest.map((streamer, idx) => (
+            <Link
+              key={streamer.channelId}
+              href={`/streamers/${streamer.channelId}`}
+              className="relative h-20 md:h-36 overflow-hidden rounded-xl"
+            >
+              <BlurBg url={streamer.channelImageUrl} />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 flex items-center gap-3 px-3">
+                <ProfileCircle
+                  url={streamer.channelImageUrl}
+                  name={streamer.channelName}
+                />
+                <div className="min-w-0 flex-1 items-center">
+                  <p className="text-white font-bold md:text-lg truncate">
+                    {streamer.channelName}
+                  </p>
+                  <p className="text-white/60 text-xs truncate">
+                    {streamer.topGames.join(" · ")}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p
+                    className="text-white text-2xl md:text-4xl leading-tight"
+                    style={{ fontFamily: "var(--font-anton)" }}
+                  >
+                    {avgViewers(streamer).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
