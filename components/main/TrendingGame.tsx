@@ -132,7 +132,7 @@ function PodiumItem({
             </span>
           </div>
           <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
-            <p className="text-xs md:text-sm font-medium text-white/90 truncate mb-1 md:mb-2">
+            <p className="text-xs md:text-sm font-bold text-white/90 truncate mb-1 md:mb-2">
               {game.category}
             </p>
             {showStreamer && game.topStreamer && (
@@ -151,12 +151,12 @@ function PodiumItem({
                         sizes="32px"
                       />
                     ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-white">
+                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-bold text-white">
                         {game.topStreamer.channelName[0]}
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] md:text-xs text-white/90 truncate">
+                  <span className="text-[10px] md:text-xs font-semibold text-white/90 truncate">
                     {game.topStreamer.channelName}
                   </span>
                 </div>
