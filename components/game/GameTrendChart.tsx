@@ -20,6 +20,10 @@ type Props = {
   allRows: Row[];
   dateRange: DateRange | undefined;
   metric: Metric;
+  liveStats?: {
+    currentViewers: number;
+    currentCount: number;
+  };
 };
 
 const metricLabels: Record<Metric, string> = {
@@ -28,13 +32,41 @@ const metricLabels: Record<Metric, string> = {
   peakViewers: "최고 시청자",
 };
 
-export function GameTrendChart({ allRows = [], dateRange, metric }: Props) {
+export function GameTrendChart({
+  allRows = [],
+  dateRange,
+  metric,
+  liveStats,
+}: Props) {
   const filtered = useMemo(() => {
-    if (!dateRange?.from || !dateRange?.to) return allRows;
-    const from = format(dateRange.from, "MM-dd");
-    const to = format(dateRange.to, "MM-dd");
-    return allRows.filter((r) => r.date >= from && r.date <= to);
-  }, [allRows, dateRange]);
+    let rows = allRows;
+    if (dateRange?.from && dateRange?.to) {
+      const from = format(dateRange.from, "MM-dd");
+      const to = format(dateRange.to, "MM-dd");
+      rows = rows.filter((r) => r.date >= from && r.date <= to);
+    }
+
+    // 오늘 실시간 데이터 추가
+    if (liveStats) {
+      const today = format(new Date(), "MM-dd");
+      const alreadyExists = rows.some((r) => r.date === today);
+      if (!alreadyExists) {
+        rows = [
+          ...rows,
+          {
+            date: today,
+            totalViewers: liveStats.currentViewers,
+            concurrentViewers: liveStats.currentViewers,
+            broadcastCount: liveStats.currentCount,
+            maxViewers: liveStats.currentViewers,
+            peakViewers: liveStats.currentViewers,
+          },
+        ];
+      }
+    }
+
+    return rows;
+  }, [allRows, dateRange, liveStats]);
 
   return (
     <div className="space-y-4">

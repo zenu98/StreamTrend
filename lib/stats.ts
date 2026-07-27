@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
+import { toKSTDateString } from "./utils";
+import { getLives } from "./lives";
 export async function getStatsByDate(period: "weekly" | "monthly") {
   "use cache";
   cacheLife("statsTime");
@@ -71,7 +73,9 @@ export async function getStatsByDate(period: "weekly" | "monthly") {
     })),
   };
 }
-export function getPeriodFrom(period: "daily" | "weekly" | "monthly"): Date {
+export function getPeriodFrom(
+  period: "daily" | "3days" | "weekly" | "monthly",
+): Date {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   kstNow.setUTCHours(0, 0, 0, 0);
@@ -80,6 +84,11 @@ export function getPeriodFrom(period: "daily" | "weekly" | "monthly"): Date {
   if (period === "daily") {
     const from = new Date(todayKSTasUTC);
     from.setUTCDate(from.getUTCDate() - 1);
+    return from;
+  }
+  if (period === "3days") {
+    const from = new Date(todayKSTasUTC);
+    from.setUTCDate(from.getUTCDate() - 3);
     return from;
   }
   if (period === "weekly") {
@@ -178,11 +187,11 @@ export async function getStats(period: "daily" | "weekly" | "monthly") {
       .slice(0, 10),
   };
 }
-export async function getWeeklyTopGames() {
+export async function get3DaysTopGames() {
   "use cache";
   cacheLife("statsTime");
 
-  const from = getPeriodFrom("weekly");
+  const from = getPeriodFrom("3days");
 
   const [rows, categories] = await Promise.all([
     prisma.dailySummary.findMany({
@@ -381,3 +390,252 @@ export async function getWeeklyTopStreamers() {
       .map((g) => g.game),
   }));
 }
+
+export async function get3DaysTopStreamers() {
+  "use cache";
+  cacheLife("statsTime");
+
+  const from = getPeriodFrom("3days");
+
+  const [rows, allGameRows] = await Promise.all([
+    prisma.streamerDailySummary.groupBy({
+      by: ["channelId", "channelName", "channelImageUrl"],
+      where: { date: { gte: from } },
+      _sum: { totalViewers: true, broadcastCount: true },
+      _max: { maxViewers: true },
+    }),
+    prisma.streamerDailySummary.groupBy({
+      by: ["channelId", "liveCategoryValue"],
+      where: { date: { gte: from } },
+      _sum: { totalViewers: true },
+    }),
+  ]);
+
+  const deduped = new Map<string, (typeof rows)[0]>();
+  for (const row of rows) {
+    const existing = deduped.get(row.channelId);
+    if (
+      !existing ||
+      (row._max.maxViewers ?? 0) > (existing._max.maxViewers ?? 0)
+    ) {
+      deduped.set(row.channelId, row);
+    }
+  }
+
+  const top10 = [...deduped.values()]
+    .sort((a, b) => {
+      const avgA = (a._sum.totalViewers ?? 0) / (a._sum.broadcastCount ?? 1);
+      const avgB = (b._sum.totalViewers ?? 0) / (b._sum.broadcastCount ?? 1);
+      return avgB - avgA;
+    })
+    .slice(0, 10);
+
+  const top10Ids = new Set(top10.map((s) => s.channelId));
+
+  const gameMap = new Map<string, { game: string; viewers: number }[]>();
+  for (const row of allGameRows) {
+    if (!top10Ids.has(row.channelId)) continue;
+    const list = gameMap.get(row.channelId) ?? [];
+    list.push({
+      game: row.liveCategoryValue,
+      viewers: row._sum.totalViewers ?? 0,
+    });
+    gameMap.set(row.channelId, list);
+  }
+
+  return top10.map((s) => ({
+    channelId: s.channelId,
+    channelName: s.channelName,
+    channelImageUrl: s.channelImageUrl ?? null,
+    totalViewers: s._sum.totalViewers ?? 0,
+    maxViewers: s._max.maxViewers ?? 0,
+    broadcastCount: s._sum.broadcastCount ?? 0,
+    topGames: (gameMap.get(s.channelId) ?? [])
+      .sort((a, b) => b.viewers - a.viewers)
+      .slice(0, 3)
+      .map((g) => g.game),
+  }));
+}
+
+export type LiveStreamer = {
+  channelId: string;
+  channelName: string;
+  channelImageUrl: string | null;
+  totalViewers: number;
+  maxViewers: number;
+  broadcastCount: number;
+  topGames: string[];
+  liveTitle: string;
+};
+
+export async function getLiveStreamers(): Promise<LiveStreamer[]> {
+  "use cache";
+  cacheLife("statsTime");
+
+  const lives = await getLives();
+
+  const streamerMap = new Map<
+    string,
+    {
+      channelId: string;
+      channelName: string;
+      channelImageUrl: string | null;
+      totalViewers: number;
+      liveTitle: string;
+      topGames: Map<string, number>;
+    }
+  >();
+
+  for (const snap of lives.allGamesRaw) {
+    const prev = streamerMap.get(snap.channelId) ?? {
+      channelId: snap.channelId,
+      channelName: snap.channelName,
+      channelImageUrl: snap.channelImageUrl ?? null,
+      totalViewers: 0,
+      liveTitle: snap.liveTitle,
+      topGames: new Map(),
+    };
+    prev.totalViewers += snap.concurrentUserCount;
+    if (snap.liveCategoryValue) {
+      prev.topGames.set(
+        snap.liveCategoryValue,
+        (prev.topGames.get(snap.liveCategoryValue) ?? 0) +
+          snap.concurrentUserCount,
+      );
+    }
+    streamerMap.set(snap.channelId, prev);
+  }
+
+  return [...streamerMap.values()]
+    .sort((a, b) => b.totalViewers - a.totalViewers)
+    .slice(0, 10)
+    .map((s) => ({
+      channelId: s.channelId,
+      channelName: s.channelName,
+      channelImageUrl: s.channelImageUrl,
+      totalViewers: s.totalViewers,
+      maxViewers: s.totalViewers,
+      broadcastCount: 1,
+      topGames: [...s.topGames.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([game]) => game),
+      liveTitle: s.liveTitle,
+    }));
+}
+// export async function getRisingGames() {
+//   "use cache";
+//   cacheLife("statsTime");
+
+//   const from = new Date();
+//   from.setDate(from.getDate() - 14);
+
+//   const [rows, categories, lives] = await Promise.all([
+//     prisma.dailySummary.findMany({
+//       where: { date: { gte: from }, categoryType: "GAME" },
+//       orderBy: { date: "asc" },
+//     }),
+//     prisma.category.findMany({
+//       select: { categoryId: true, posterImageUrl: true },
+//     }),
+//     getLives(), // 오늘 실시간 데이터
+//   ]);
+//   const todayMap = new Map(
+//     lives.allGames.map((g) => [g.categoryId, g.avgViewers]),
+//   );
+//   const posterMap = new Map(
+//     categories.map((c) => [c.categoryId, c.posterImageUrl]),
+//   );
+
+//   // 게임별로 날짜순 데이터 그룹핑
+//   const gameMap = new Map<
+//     string,
+//     {
+//       liveCategoryValue: string;
+//       days: { date: string; concurrentViewers: number }[];
+//     }
+//   >();
+
+//   for (const row of rows) {
+//     const prev = gameMap.get(row.liveCategory) ?? {
+//       liveCategoryValue: row.liveCategoryValue,
+//       days: [],
+//     };
+//     const date = toKSTDateString(row.date);
+//     const existing = prev.days.find((d) => d.date === date);
+//     if (existing) {
+//       existing.concurrentViewers +=
+//         row.snapshotCount > 0
+//           ? Math.round(row.totalViewers / row.snapshotCount)
+//           : 0;
+//     } else {
+//       prev.days.push({
+//         date,
+//         concurrentViewers:
+//           row.snapshotCount > 0
+//             ? Math.round(row.totalViewers / row.snapshotCount)
+//             : 0,
+//       });
+//     }
+//     gameMap.set(row.liveCategory, prev);
+//   }
+
+//   const rising: {
+//     category: string;
+//     categoryId: string;
+//     posterImageUrl: string | null;
+//     momentumPct: number;
+//     recentAvg: number;
+//   }[] = [];
+//   const today = toKSTDateString(new Date());
+//   for (const [categoryId, data] of gameMap.entries()) {
+//     const todayViewers = todayMap.get(categoryId);
+//     if (todayViewers) {
+//       data.days.push({ date: today, concurrentViewers: todayViewers });
+//     }
+//   }
+//   for (const [categoryId, data] of gameMap.entries()) {
+//     const days = data.days;
+//     if (days.length < 10) continue; // 데이터 부족하면 스킵
+
+//     const values = days.map((d) => d.concurrentViewers);
+//     const n = values.length;
+//     const recentValues = values.slice(n - 5); // 최근 3일
+//     const priorValues = values.slice(0, n - 5); // 이전
+
+//     const recentMean =
+//       recentValues.reduce((a, b) => a + b, 0) / recentValues.length;
+//     const priorMean =
+//       priorValues.reduce((a, b) => a + b, 0) / priorValues.length;
+//     const momentumPct =
+//       priorMean > 0 ? ((recentMean - priorMean) / priorMean) * 100 : 0;
+//     const daysAbovePrior = recentValues.filter((v) => v > priorMean).length;
+
+//     // 급상승 기준: 최근 3일 평균이 이전 대비 20% 이상 증가
+//     if (
+//       momentumPct >= 30 &&
+//       recentMean > 1000 &&
+//       values[n - 1] >= recentMean * 0.8 &&
+//       daysAbovePrior >= 3
+//     ) {
+//       rising.push({
+//         category: data.liveCategoryValue,
+//         categoryId,
+//         posterImageUrl: posterMap.get(categoryId) ?? null,
+//         momentumPct,
+//         recentAvg: Math.round(recentMean),
+//       });
+//     }
+//   }
+
+//   return rising
+//     .sort((a, b) => b.momentumPct - a.momentumPct)
+//     .slice(0, 11)
+//     .map((g) => ({
+//       ...g,
+//       concurrentViewers: g.recentAvg,
+//       maxViewers: g.recentAvg,
+//       peakViewers: g.recentAvg,
+//       topStreamer: null,
+//     }));
+// }

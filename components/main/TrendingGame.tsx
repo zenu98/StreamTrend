@@ -125,14 +125,14 @@ function PodiumItem({
           ) : (
             <div className="w-full h-full bg-muted" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/80" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
           <div className="absolute inset-0 flex items-center justify-center flex-col gap-1">
             <span className="text-2xl md:text-5xl lg:text-6xl text-gray-200 leading-none [font-family:var(--font-anton)] tracking-wider">
               {value.toLocaleString()}
             </span>
           </div>
           <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
-            <p className="text-xs md:text-sm font-medium text-white truncate mb-1 md:mb-2">
+            <p className="text-xs md:text-sm font-medium text-white/90 truncate mb-1 md:mb-2">
               {game.category}
             </p>
             {showStreamer && game.topStreamer && (
@@ -156,7 +156,7 @@ function PodiumItem({
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] md:text-xs text-white/80 truncate">
+                  <span className="text-[10px] md:text-xs text-white/90 truncate">
                     {game.topStreamer.channelName}
                   </span>
                 </div>
@@ -211,7 +211,7 @@ function GameRankingBody({
             ) : (
               <div className="absolute inset-0 bg-muted" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20" />
             <div className="absolute inset-0 flex items-center gap-4 px-4">
               {/* <div
                 className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
@@ -220,7 +220,7 @@ function GameRankingBody({
                 1
               </div> */}
               <div className="min-w-0">
-                <p className="text-white/80 font-semibold text-sm truncate">
+                <p className="text-white/90 font-bold text-sm truncate">
                   {top3[0].category}
                 </p>
                 <p
@@ -269,7 +269,7 @@ function GameRankingBody({
                   {rank}
                 </div> */}
                 <div className="absolute bottom-2 left-2 right-2">
-                  <p className="text-white/80 font-semibold text-xs truncate">
+                  <p className="text-white/90 font-bold text-xs truncate">
                     {game.category}
                   </p>
                   <p
@@ -308,7 +308,7 @@ function GameRankingBody({
                 {idx + 4}위
               </div> */}
               <div className="absolute bottom-2 left-2 right-2">
-                <p className="text-white/80 text-[10px] truncate font-semibold">
+                <p className="text-white/90 text-[10px] truncate font-semibold">
                   {game.category}
                 </p>
                 <p
@@ -359,7 +359,7 @@ function GameRankingBody({
               ) : (
                 <div className="absolute inset-0 bg-muted" />
               )}
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black/80" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80" />
               <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
                 {idx + 4}
               </div>
@@ -372,7 +372,7 @@ function GameRankingBody({
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p className="text-sm font-medium text-white truncate mb-2">
+                <p className="text-sm font-bold text-white/90 truncate mb-2">
                   {game.category}
                 </p>
                 {showStreamer && game.topStreamer && (
@@ -392,7 +392,7 @@ function GameRankingBody({
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-white/80 truncate">
+                    <span className="text-xs text-white/90 truncate">
                       {game.topStreamer.channelName}
                     </span>
                   </div>
@@ -460,7 +460,7 @@ export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
           ) : (
             <>
               <p className="text-xs md:text-sm text-white/40">
-                최근 7일간 시청자 기준
+                최근 3일간 시청자 기준
               </p>
               <div className="relative group">
                 <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
@@ -504,9 +504,15 @@ export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
         </Suspense>
       ) : (
         <GameRankingBody
-          games={active === "byMax" ? byMax : byPeak}
+          games={active === "byMax" ? byMax : active === "byPeak" ? byPeak : []}
           showStreamer={showStreamer}
-          valueKey={valueConfig[active].key}
+          valueKey={
+            active === "byMax"
+              ? "maxViewers"
+              : active === "byPeak"
+                ? "peakViewers"
+                : "concurrentViewers"
+          }
         />
       )}
     </section>

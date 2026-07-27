@@ -94,23 +94,28 @@ async function GameDetail({
         </h1>
       </div>
 
-      <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">현재</h2>
+      <section className="flex-col space-y-4">
+        {/* <h2 className="text-lg md:text-xl font-bold">현재</h2> */}
+        <AllTimeRecordCard
+          maxViewers={stats.maxViewers}
+          maxViewersDate={stats.maxViewersDate}
+        />
         <CurrentStatsStrip
           currentViewers={liveStats.currentViewers}
           currentCount={liveStats.currentCount}
           viewerTier={liveStats.viewerTier}
           countTier={liveStats.countTier}
           currentMaxViewer={liveStats.currentMaxViewer}
+          topLiveStreamers={liveStats.topLiveStreamers}
         />
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">역대</h2>
-        <AllTimeRecordCard
+        {/* <h2 className="text-lg md:text-xl font-bold">역대</h2> */}
+        {/* <AllTimeRecordCard
           maxViewers={stats.maxViewers}
           maxViewersDate={stats.maxViewersDate}
-        />
+        /> */}
       </section>
 
       <section className="space-y-4">
@@ -139,6 +144,10 @@ async function GameDetail({
           defaultGame={categoryInfo?.categoryValue ?? ""}
           defaultCategoryId={categoryId}
           allCategories={allCategories}
+          liveStats={{
+            currentViewers: liveStats.currentViewers,
+            currentCount: liveStats.currentCount,
+          }}
         />
       </section>
       {/* 역대 최고 시청자 랭킹 */}

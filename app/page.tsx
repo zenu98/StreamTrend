@@ -4,8 +4,10 @@ import { StatsSection } from "@/components/shared/StatsSection";
 import {
   getStats,
   getStatsByDate,
-  getWeeklyTopGames,
+  get3DaysTopGames,
   getWeeklyTopStreamers,
+  get3DaysTopStreamers,
+  getLiveStreamers,
 } from "@/lib/stats";
 import { getLives } from "@/lib/lives";
 import { Suspense } from "react";
@@ -26,12 +28,13 @@ export default function Home() {
 
 async function HomeContent() {
   const [topGames, topStreamers] = await Promise.all([
-    getWeeklyTopGames(),
-    getWeeklyTopStreamers(),
+    get3DaysTopGames(),
+    get3DaysTopStreamers(),
   ]);
 
   // await 하지 않음 — 백그라운드에서 병렬로 진행되되, 페이지 렌더링을 막지 않음
   const livePromise = getLiveGamesData();
+  const liveStreamerPromise = getLiveStreamers();
 
   return (
     <div className="space-y-32 max-w-6xl 2xl:max-w-7xl  mx-auto">
@@ -40,7 +43,10 @@ async function HomeContent() {
         byMax={topGames.byMax}
         byPeak={topGames.byPeak}
       />
-      <TrendingStreamer streamers={topStreamers} />
+      <TrendingStreamer
+        streamers={topStreamers}
+        liveStreamerPromise={liveStreamerPromise}
+      />
     </div>
   );
 }

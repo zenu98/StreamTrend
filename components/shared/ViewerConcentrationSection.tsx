@@ -673,7 +673,7 @@ function TrendArea({
             {analysis.label}
           </span>
           {analysis.anomalyNote && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-xs  text-pink-400">
               {analysis.anomalyNote}
             </span>
           )}
@@ -861,9 +861,8 @@ export function ViewerConcentrationSection({
                   대형 스트리머 효과
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  오늘 시청자가 평소 패턴을 벗어나 급증했고, 소수 방송에 몰려
-                  있어요 — 대회·광고 같은 일회성 이벤트나 특정 스트리머의 영향일
-                  수 있어요.
+                  오늘 시청자가 평소보다 크게 늘었어요 — 대회·이벤트·인기
+                  스트리머의 방송 등 특별한 요인이 있을 수 있어요.
                 </p>
               </div>
             </div>

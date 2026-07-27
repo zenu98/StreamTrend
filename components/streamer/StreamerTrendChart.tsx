@@ -59,13 +59,15 @@ function StreamerTrendTooltip(props: any) {
 
   const content = (
     <>
-      <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
+      <div className="mb-2.5 flex items-center gap-2 border-b pb-2">
         <span
-          className="h-2.5 w-2.5 rounded-full"
+          className="h-2.5 w-2.5 rounded-full flex-shrink-0"
           style={{ background: "var(--chart-1)" }}
         />
-        {headerLabel}
-        <span className="ml-auto">{headerValue.toLocaleString()} 명</span>
+        <span className="text-sm font-semibold">{headerLabel}</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {formatKoreanDate(row.displayDate)}
+        </span>
       </div>
 
       {row.gameBreakdown && row.gameBreakdown.length > 0 && (
@@ -98,10 +100,8 @@ function StreamerTrendTooltip(props: any) {
           })}
         </div>
       )}
-      <div className="flex justify-end">
-        <span className="text-xs text-muted-foreground/90">
-          {formatKoreanDate(row.displayDate)}
-        </span>
+      <div className="flex justify-end mt-4">
+        <span className=" font-bold">{headerValue.toLocaleString()} 명</span>
       </div>
     </>
   );

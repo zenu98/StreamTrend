@@ -117,7 +117,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
           </ChartContainer>
         )}
       </CardContent>
-      {hasTrend && (
+      {/* {hasTrend && (
         <CardFooter className="flex-col items-start gap-2 text-sm">
           <div className="flex gap-2 leading-none font-medium">
             {isUp ? "상승" : "하락"} 중이에요 ({isUp ? "+" : ""}
@@ -134,7 +134,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
             </div>
           )}
         </CardFooter>
-      )}
+      )} */}
     </Card>
   );
 }

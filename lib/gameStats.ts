@@ -91,8 +91,20 @@ export async function getGameLiveStats(categoryId: string) {
         live.concurrentUserCount > (max?.concurrentUserCount ?? 0) ? live : max,
       null,
     );
-
+  const topLiveStreamers = lives.allGamesRaw
+    .filter((live: any) => live.liveCategory === categoryId)
+    .sort((a: any, b: any) => b.concurrentUserCount - a.concurrentUserCount)
+    .slice(0, 3)
+    .map((live: any) => ({
+      channelId: live.channelId,
+      channelName: live.channelName,
+      channelImageUrl: live.channelImageUrl ?? null,
+      liveThumbnailImageUrl: live.liveThumbnailImageUrl ?? null,
+      concurrentUserCount: live.concurrentUserCount,
+      liveTitle: live.liveTitle,
+    }));
   return {
+    topLiveStreamers,
     currentViewers,
     currentCount,
     viewerTier,

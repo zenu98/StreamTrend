@@ -31,6 +31,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "**.pstatic.net",
       },
+      {
+        protocol: "https",
+        hostname: "livecloud-thumb.akamaized.net",
+      },
     ],
   },
 };

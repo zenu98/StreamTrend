@@ -30,6 +30,10 @@ type Props = {
   defaultGame: string;
   defaultCategoryId: string;
   allCategories: Category[];
+  liveStats?: {
+    currentViewers: number;
+    currentCount: number;
+  };
 };
 
 const tabs = [
@@ -92,6 +96,7 @@ export function GameChartTabs({
   defaultGame,
   defaultCategoryId,
   allCategories,
+  liveStats,
 }: Props) {
   const [active, setActive] = useState<"single" | "compare">("single");
   const [metric, setMetric] = useState<Metric>("concurrentViewers");
@@ -176,6 +181,7 @@ export function GameChartTabs({
           allRows={allRows}
           dateRange={dateRange}
           metric={metric}
+          liveStats={liveStats}
         />
       ) : (
         <GameCompareChart
