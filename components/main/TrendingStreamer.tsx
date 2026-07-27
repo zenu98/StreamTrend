@@ -166,7 +166,7 @@ function StreamerList({
         />
       )}
 
-      <div className="grid grid-cols-2  gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2  gap-2">
         {[top3[1], top3[2]].map((streamer, i) => {
           if (!streamer) return null;
           const rank = i + 2;
@@ -187,7 +187,7 @@ function StreamerList({
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {rest.map((streamer) => (
           <StreamerCard
             key={streamer.channelId}
