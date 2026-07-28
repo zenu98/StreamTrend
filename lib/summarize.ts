@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { revalidateTag } from "next/cache";
 
 function getKSTDayBoundary(baseDate: Date, offsetDays = 0): Date {
   const kstBase = new Date(baseDate.getTime() + 9 * 60 * 60 * 1000);
@@ -190,7 +191,7 @@ export async function summarizeYesterday(
     ],
     { timeout: 60000 },
   );
-
+  revalidateTag("broadcast-rank", "broadcastRank");
   return {
     success: true,
     date: summaryDateUTC,

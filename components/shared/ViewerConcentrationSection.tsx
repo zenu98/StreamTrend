@@ -265,8 +265,8 @@ function classifyQuadrant(currentViewers: number, currentCount: number) {
     };
   }
   return {
-    label: "한적한 게임",
-    desc: "방송과 시청자가 모두 적어 여유롭게 즐길 수 있는 게임이에요.",
+    label: "R.I.P",
+    desc: "언젠가 다시 만날 날을 기다려요.",
     color: "#94a3b8",
   };
 }

@@ -155,6 +155,7 @@ async function GameDetail({
         <GameTopStreamers
           topRecords={topStreamers.topRecords}
           topChannels={topStreamers.topChannels}
+          categoryId={categoryId}
         />
       </section>
     </main>

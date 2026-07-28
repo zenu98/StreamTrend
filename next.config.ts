@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
       revalidate: 300,
       expire: 3600,
     },
+    broadcastRank: {
+      stale: 3600,
+      revalidate: 86400,
+      expire: 86400 * 7,
+    },
   },
   images: {
     minimumCacheTTL: 86400, // 이미지 최적화 캐싱 시간 24시간
