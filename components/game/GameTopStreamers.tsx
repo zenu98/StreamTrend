@@ -145,8 +145,10 @@ export function GameTopStreamers({
         <div className="relative group">
           <Info className="w-4 h-4 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-1">
-            <p>· 방송 시간은 5분 단위로 수집됩니다</p>
-            <p>· 실제 과 차이가 있을 수 있어요</p>
+            <p>
+              · 5분 간격으로 수집되어 실제 방송 시간과 차이가 있을 수 있어요
+            </p>
+            <p>· 오늘 데이터는 매일 06:00에 집계돼요</p>
           </div>
         </div>
       </div>
