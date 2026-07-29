@@ -228,6 +228,35 @@ export async function getGameStats(categoryId: string) {
   });
 
   const allRows = mergeRowsByKSTDate(rows);
+
+  // 빠진 날짜 0으로 채우기
+  const dateSet = new Set(allRows.map((r) => r.date));
+  const startDate = new Date(fromYear.getTime() + 9 * 60 * 60 * 1000);
+  startDate.setUTCHours(0, 0, 0, 0);
+
+  const filledRows = [...allRows];
+  const yesterday = new Date(kstNow.getTime());
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+  for (
+    let d = new Date(startDate);
+    d <= yesterday;
+    d.setDate(d.getDate() + 1)
+  ) {
+    const dateStr = `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+    if (!dateSet.has(dateStr)) {
+      filledRows.push({
+        date: dateStr,
+        totalViewers: 0,
+        concurrentViewers: 0,
+        broadcastCount: 0,
+        maxViewers: 0,
+        peakViewers: 0,
+      });
+    }
+  }
+
+  filledRows.sort((a, b) => (a.date > b.date ? 1 : -1));
   const streamerRows = await prisma.streamerDailySummary.findMany({
     where: { liveCategory: categoryId, date: { gte: fromYear } },
     orderBy: { maxViewers: "desc" },
@@ -269,7 +298,7 @@ export async function getGameStats(categoryId: string) {
     maxViewersDate,
     peakViewers,
     allTimeTopStreamer,
-    allRows,
+    allRows: filledRows,
     topStreamersByDate: Object.fromEntries(topStreamersByDate),
   };
 }
