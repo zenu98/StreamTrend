@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import { useState } from "react";
 
 type TrendRow = {
@@ -38,8 +39,17 @@ export function BroadcastCalendar({ trendRows }: Props) {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-lg md:text-xl font-bold">방송 기록</h2>
-
+      <div className="flex items-center gap-2">
+        <h2 className="text-lg md:text-xl font-bold">방송 기록</h2>
+        <div className="relative group">
+          <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+          <div className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-1">
+            <p>· 매일 06:00 ~ 다음날 06:00을 하루로 집계해요</p>
+            <p>· 예를 들어 28일 새벽 방송은 27일 기록으로 표시돼요</p>
+            <p>· 2026년 7월 이전 데이터는 집계가 부정확할 수 있어요</p>
+          </div>
+        </div>
+      </div>
       {/* 월별 탭 */}
       <div className="flex gap-2 flex-wrap mb-8">
         {months.map((m) => (
