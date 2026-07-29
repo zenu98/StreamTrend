@@ -228,6 +228,41 @@ export async function getGameStats(categoryId: string) {
   });
 
   const allRows = mergeRowsByKSTDate(rows);
+  const streamerRows = await prisma.streamerDailySummary.findMany({
+    where: { liveCategory: categoryId, date: { gte: fromYear } },
+    orderBy: { maxViewers: "desc" },
+    select: {
+      channelId: true,
+      channelName: true,
+      channelImageUrl: true,
+      maxViewers: true,
+      date: true,
+    },
+  });
+
+  const topStreamersByDate = new Map<
+    string,
+    {
+      channelId: string;
+      channelName: string;
+      channelImageUrl: string | null;
+      maxViewers: number;
+    }[]
+  >();
+
+  for (const r of streamerRows) {
+    const date = toKSTDateString(r.date); // "MM-DD" 형식
+    const list = topStreamersByDate.get(date) ?? [];
+    if (list.length < 3) {
+      list.push({
+        channelId: r.channelId,
+        channelName: r.channelName,
+        channelImageUrl: r.channelImageUrl ?? null,
+        maxViewers: r.maxViewers,
+      });
+      topStreamersByDate.set(date, list);
+    }
+  }
 
   return {
     maxViewers,
@@ -235,6 +270,7 @@ export async function getGameStats(categoryId: string) {
     peakViewers,
     allTimeTopStreamer,
     allRows,
+    topStreamersByDate: Object.fromEntries(topStreamersByDate),
   };
 }
 export type TopStreamerEntry = {

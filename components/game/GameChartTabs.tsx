@@ -24,7 +24,12 @@ type Category = {
 };
 
 type Metric = "concurrentViewers" | "maxViewers" | "peakViewers";
-
+type TopStreamer = {
+  channelId: string;
+  channelName: string;
+  channelImageUrl: string | null;
+  maxViewers: number;
+};
 type Props = {
   allRows: Row[];
   defaultGame: string;
@@ -34,6 +39,7 @@ type Props = {
     currentViewers: number;
     currentCount: number;
   };
+  topStreamersByDate?: Record<string, TopStreamer[]>;
 };
 
 const tabs = [
@@ -97,6 +103,7 @@ export function GameChartTabs({
   defaultCategoryId,
   allCategories,
   liveStats,
+  topStreamersByDate,
 }: Props) {
   const [active, setActive] = useState<"single" | "compare">("single");
   const [metric, setMetric] = useState<Metric>("concurrentViewers");
@@ -182,6 +189,7 @@ export function GameChartTabs({
           dateRange={dateRange}
           metric={metric}
           liveStats={liveStats}
+          topStreamersByDate={topStreamersByDate}
         />
       ) : (
         <GameCompareChart

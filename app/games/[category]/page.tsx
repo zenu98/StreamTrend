@@ -148,6 +148,7 @@ async function GameDetail({
             currentViewers: liveStats.currentViewers,
             currentCount: liveStats.currentCount,
           }}
+          topStreamersByDate={stats.topStreamersByDate}
         />
       </section>
       {/* 역대 최고 시청자 랭킹 */}

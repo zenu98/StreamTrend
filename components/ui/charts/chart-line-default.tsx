@@ -61,7 +61,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
   const changePct =
     hasTrend && first! > 0 ? Math.round(((last! - first!) / first!) * 100) : 0;
   const isUp = changePct >= 0;
-
+  console.log("trendRows length:", data.length, data);
   return (
     <Card>
       <CardHeader>
@@ -69,7 +69,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent>
-        {data.length < 2 ? (
+        {data.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             추이 데이터가 부족해요
           </p>
@@ -111,7 +111,11 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
                 type="linear"
                 stroke={`var(--color-${String(dataKey)})`}
                 strokeWidth={2}
-                dot={false}
+                dot={
+                  data.length <= 1
+                    ? { fill: `var(--color-${String(dataKey)})`, r: 4 }
+                    : false
+                }
               />
             </LineChart>
           </ChartContainer>

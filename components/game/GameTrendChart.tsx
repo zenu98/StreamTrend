@@ -20,10 +20,16 @@ type Props = {
   allRows: Row[];
   dateRange: DateRange | undefined;
   metric: Metric;
-  liveStats?: {
-    currentViewers: number;
-    currentCount: number;
-  };
+  liveStats?: { currentViewers: number; currentCount: number };
+  topStreamersByDate?: Record<
+    string,
+    {
+      channelId: string;
+      channelName: string;
+      channelImageUrl: string | null;
+      maxViewers: number;
+    }[]
+  >;
 };
 
 const metricLabels: Record<Metric, string> = {
@@ -37,6 +43,7 @@ export function GameTrendChart({
   dateRange,
   metric,
   liveStats,
+  topStreamersByDate,
 }: Props) {
   const filtered = useMemo(() => {
     let rows = allRows;
@@ -79,6 +86,8 @@ export function GameTrendChart({
             description={`날짜별 ${metricLabels[metric]}`}
             data={filtered}
             dataKey={metric}
+            topStreamersByDate={topStreamersByDate}
+            hasLiveData={!!liveStats}
           />
           <ChartLineLabel
             title="방송 수"
