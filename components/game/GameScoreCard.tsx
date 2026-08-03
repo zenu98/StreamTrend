@@ -1,4 +1,5 @@
 import { Info } from "lucide-react";
+import { ChartRadialText } from "../ui/charts/chart-radial-text";
 
 function ScoreRingColor(score: number) {
   if (score >= 80) return "#00ce7a";
@@ -17,7 +18,11 @@ type Props = {
     broadcastCount: number;
   }[];
 };
-
+function getGradientColors(score: number): [string, string] {
+  if (score >= 70) return ["#1bb373", "#00e5a0"]; // 초록 계열
+  if (score >= 40) return ["#f59e0b", "#1bb373"]; // 주황→초록
+  return ["#e24b4a", "#f59e0b"]; // 빨강→주황
+}
 export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const maxViewers = Math.max(...allGames.map((g) => g.concurrentViewers));
   const maxBroadcast = Math.max(...allGames.map((g) => g.broadcastCount));
@@ -86,7 +91,8 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const color = ScoreRingColor(totalScore);
   const viewerColor = ScoreRingColor(viewerPercentile);
   const countColor = ScoreRingColor(countPercentile);
-
+  const [gradStart, gradEnd] = getGradientColors(totalScore);
+  const pct = totalScore;
   console.log("=== 스트림트렌드 인기 점수 디버그 ===");
   console.log("게임:", categoryId);
   console.log("전체 게임 수:", allGames.length);
@@ -116,52 +122,42 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   return (
     <div className="rounded-2xl border bg-card px-5 py-5 space-y-4 sm:min-w-[45%] sm:w-fit">
       <div className="flex items-center gap-2">
+        <p className="text-sm font-semibold text-muted-foreground">
+          스트림트렌드 인기 점수
+        </p>
         <div className="relative group">
           <Info className="w-4 h-4 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-full mt-2 w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-2">
             <p className="font-semibold text-white/90 mb-1">점수 계산 기준</p>
             <p>
-              · <span className="text-white/90">시청자 (40%)</span> — 최근 3일
-              평균 시청자를 전체 게임 대비 백분위로 환산해요
+              · <span className="text-white/90">시청자 (40%)</span> — 최근 7일
+              평균 시청자를 전체 게임 대비 환산해요
             </p>
             <p>
-              · <span className="text-white/90">방송 수 (30%)</span> — 최근 3일
-              평균 방송 수를 전체 게임 대비 백분위로 환산해요
+              · <span className="text-white/90">방송 수 (30%)</span> — 최근 7일
+              방송 수를 전체 게임 대비 환산해요. 소수 스트리머에 의존하는지
+              저변이 넓은지를 반영해요
             </p>
             <p>
-              · <span className="text-white/90">지속성 (30%)</span> — 최근 7일
-              평균 시청자 대비 이전 7일 평균 시청자 유지율이에요
+              · <span className="text-white/90">추세 (30%)</span> — 최근 3일
+              평균 시청자와 이전 4일 평균을 비교해요. 상승 중이면 높은 점수,
+              하락 중이면 낮은 점수예요
             </p>
           </div>
         </div>
-        <p className="text-sm font-semibold text-muted-foreground">
-          스트림트렌드 인기 점수
-        </p>
       </div>
 
       {/* 종합 점수 */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         {/* 종합 점수 링 */}
-        <div className="flex items-center justify-center gap-4">
-          <div
-            className="sm:w-32 sm:h-32 w-28 h-28 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ border: `8px solid ${color}` }}
-          >
-            <span
-              className="sm:text-7xl text-5xl leading-none"
-              style={{ fontFamily: "var(--font-anton)", color }}
-            >
-              {totalScore}
-            </span>
-          </div>
-        </div>
+        <ChartRadialText title="스트림트렌드 인기 점수" value={totalScore} />
 
         {/* 세부 지표 */}
         <div className="flex-1 space-y-3">
           <div>
             <div className="flex justify-between mb-1">
               <span className="text-xs text-muted-foreground">시청자</span>
-              <span className="text-xs font-medium">{viewerPercentile}</span>
+              <span className="text-xs font-medium">{viewerPercentile}점</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -176,7 +172,7 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
           <div>
             <div className="flex justify-between mb-1">
               <span className="text-xs text-muted-foreground">방송 수</span>
-              <span className="text-xs font-medium">{countPercentile}</span>
+              <span className="text-xs font-medium">{countPercentile}점</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div
