@@ -26,3 +26,8 @@ export function formatKoreanDate(dateStr: string): string {
   const d = parseInt(dd, 10);
   return Number.isFinite(m) && Number.isFinite(d) ? `${m}월 ${d}일` : dateStr; // 혹시 다른 포맷이 들어와도 안전하게
 }
+export function toKSTDateFullString(date: Date): string {
+  return new Date(date.getTime() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10); // "2026-08-03"
+}

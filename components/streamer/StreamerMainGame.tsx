@@ -85,7 +85,7 @@ export function StreamerMainGame({ rows }: { rows: Row[] }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">최근 7일 주력 게임</p>
+      <p className="text-sm text-muted-foreground">최근 7일 주력 게임</p>
 
       {/* 1위 */}
       <Link

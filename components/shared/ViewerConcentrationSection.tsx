@@ -748,14 +748,11 @@ export function ViewerConcentrationSection({
   currentCount,
 }: Props) {
   const base = (trendRows ?? []).slice(-13);
-  const hasLive =
-    currentViewers != null &&
-    !!todayLabel &&
-    todayLabel !== base[base.length - 1]?.date;
+  const hasLive = currentViewers != null && !!todayLabel;
 
   const combined: TrendRow[] = hasLive
     ? [
-        ...base,
+        ...base.filter((r) => r.date !== todayLabel),
         {
           date: todayLabel!,
           concurrentViewers: currentViewers!,

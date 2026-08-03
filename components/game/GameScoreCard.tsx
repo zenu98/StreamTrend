@@ -1,0 +1,211 @@
+import { Info } from "lucide-react";
+
+function ScoreRingColor(score: number) {
+  if (score >= 80) return "#00ce7a";
+  if (score >= 60) return "#23ba7e";
+  if (score >= 40) return "#60a5fa";
+  if (score >= 20) return "#f59e0b";
+  return "#e24b4a";
+}
+
+type Props = {
+  categoryId: string;
+  allRows: { concurrentViewers: number }[];
+  allGames: {
+    categoryId: string;
+    concurrentViewers: number;
+    broadcastCount: number;
+  }[];
+};
+
+export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
+  const maxViewers = Math.max(...allGames.map((g) => g.concurrentViewers));
+  const maxBroadcast = Math.max(...allGames.map((g) => g.broadcastCount));
+
+  const currentGame = allGames.find((g) => g.categoryId === categoryId);
+  const currentViewers = currentGame?.concurrentViewers ?? 0;
+  const currentBroadcast = currentGame?.broadcastCount ?? 0;
+
+  const viewerPercentile = Math.round(
+    (Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100,
+  );
+  const countPercentile = Math.round(
+    (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
+  );
+
+  const recent3 = allRows.slice(-3);
+  const prev4 = allRows.slice(-7, -3);
+  const recentAvg =
+    recent3.reduce((s, r) => s + r.concurrentViewers, 0) /
+    (recent3.length || 1);
+  const prevAvg =
+    prev4.reduce((s, r) => s + r.concurrentViewers, 0) / (prev4.length || 1);
+
+  const diff = recentAvg - prevAvg;
+  const avg = (recentAvg + prevAvg) / 2;
+  const changeRate = avg > 0 ? diff / avg : 0;
+
+  let persistence: number;
+  let persistenceLabel: string;
+  let persistenceColor: string;
+
+  if (changeRate <= -0.5) {
+    persistence = 20;
+    persistenceLabel = "급락";
+    persistenceColor = "#e24b4a";
+  } else if (changeRate <= -0.3) {
+    persistence = 40;
+    persistenceLabel = "하락세";
+    persistenceColor = "#f59e0b";
+  } else if (changeRate <= 0.3) {
+    persistence = 65;
+    persistenceLabel = "유지";
+    persistenceColor = "#60a5fa";
+  } else if (changeRate <= 1.0) {
+    persistence = 85;
+    persistenceLabel = "상승세";
+    persistenceColor = "#6ee7b7";
+  } else {
+    persistence = 100;
+    persistenceLabel = "급상승";
+    persistenceColor = "#1bb373";
+  }
+
+  const segments = [
+    { color: "#e24b4a", active: persistenceLabel === "급락" },
+    { color: "#f59e0b", active: persistenceLabel === "하락세" },
+    { color: "#60a5fa", active: persistenceLabel === "유지" },
+    { color: "#6ee7b7", active: persistenceLabel === "상승세" },
+    { color: "#00ce7a", active: persistenceLabel === "급상승" },
+  ];
+
+  const totalScore = Math.round(
+    viewerPercentile * 0.4 + countPercentile * 0.3 + persistence * 0.3,
+  );
+
+  const color = ScoreRingColor(totalScore);
+  const viewerColor = ScoreRingColor(viewerPercentile);
+  const countColor = ScoreRingColor(countPercentile);
+
+  console.log("=== 스트림트렌드 인기 점수 디버그 ===");
+  console.log("게임:", categoryId);
+  console.log("전체 게임 수:", allGames.length);
+  console.log("");
+  console.log("[시청자]");
+  console.log("  현재 시청자:", currentViewers);
+  console.log("  최대 시청자:", maxViewers);
+  console.log("  로그 점수:", viewerPercentile);
+  console.log("");
+  console.log("[방송 수]");
+  console.log("  현재 방송 수:", currentBroadcast);
+  console.log("  최대 방송 수:", maxBroadcast);
+  console.log("  로그 점수:", countPercentile);
+  console.log("");
+  console.log("[지속성]");
+  console.log("  최근 3일 평균:", Math.round(recentAvg));
+  console.log("  이전 4일 평균:", Math.round(prevAvg));
+  console.log("  유지율:", persistence);
+  console.log("");
+  console.log("[종합]");
+  console.log("  시청자 기여:", Math.round(viewerPercentile * 0.4));
+  console.log("  방송 수 기여:", Math.round(countPercentile * 0.3));
+  console.log("  지속성 기여:", Math.round(persistence * 0.3));
+  console.log("  종합 점수:", totalScore);
+  console.log("=====================================");
+
+  return (
+    <div className="rounded-2xl border bg-card px-5 py-5 space-y-4 sm:min-w-[45%] sm:w-fit">
+      <div className="flex items-center gap-2">
+        <div className="relative group">
+          <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+          <div className="absolute left-0 top-full mt-2 w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-2">
+            <p className="font-semibold text-white/90 mb-1">점수 계산 기준</p>
+            <p>
+              · <span className="text-white/90">시청자 (40%)</span> — 최근 3일
+              평균 시청자를 전체 게임 대비 백분위로 환산해요
+            </p>
+            <p>
+              · <span className="text-white/90">방송 수 (30%)</span> — 최근 3일
+              평균 방송 수를 전체 게임 대비 백분위로 환산해요
+            </p>
+            <p>
+              · <span className="text-white/90">지속성 (30%)</span> — 최근 7일
+              평균 시청자 대비 이전 7일 평균 시청자 유지율이에요
+            </p>
+          </div>
+        </div>
+        <p className="text-sm font-semibold text-muted-foreground">
+          스트림트렌드 인기 점수
+        </p>
+      </div>
+
+      {/* 종합 점수 */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        {/* 종합 점수 링 */}
+        <div className="flex items-center justify-center gap-4">
+          <div
+            className="sm:w-32 sm:h-32 w-28 h-28 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ border: `8px solid ${color}` }}
+          >
+            <span
+              className="sm:text-7xl text-5xl leading-none"
+              style={{ fontFamily: "var(--font-anton)", color }}
+            >
+              {totalScore}
+            </span>
+          </div>
+        </div>
+
+        {/* 세부 지표 */}
+        <div className="flex-1 space-y-3">
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className="text-xs text-muted-foreground">시청자</span>
+              <span className="text-xs font-medium">{viewerPercentile}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${viewerPercentile}%`,
+                  background: viewerColor,
+                }}
+              />
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className="text-xs text-muted-foreground">방송 수</span>
+              <span className="text-xs font-medium">{countPercentile}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${countPercentile}%`, background: countColor }}
+              />
+            </div>
+          </div>
+          {/* 추세 */}
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs text-muted-foreground">추세</span>
+              <span className="text-xs font-medium ">{persistenceLabel}</span>
+            </div>
+            <div className="flex gap-1">
+              {segments.map((seg, i) => (
+                <div
+                  key={i}
+                  className="flex-1 h-1.5 rounded-full"
+                  style={{
+                    background: seg.color,
+                    opacity: seg.active ? 1 : 0.2,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

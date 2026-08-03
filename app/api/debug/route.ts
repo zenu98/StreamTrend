@@ -1,6 +1,7 @@
+// app/api/test-live/route.ts
 export async function GET() {
   const res = await fetch(
-    "https://openapi.chzzk.naver.com/open/v1/channels?channelIds=dc740d5bb5680666b6bf2ebc58a8203f",
+    "https://openapi.chzzk.naver.com/open/v1/lives?size=10&sortType=POPULAR",
     {
       headers: {
         "Client-Id": process.env.CHZZK_CLIENT_ID!,
@@ -9,5 +10,5 @@ export async function GET() {
     },
   );
   const json = await res.json();
-  return Response.json(json);
+  return Response.json(json.content.data[0]);
 }

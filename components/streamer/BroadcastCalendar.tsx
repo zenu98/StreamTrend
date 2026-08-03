@@ -1,5 +1,6 @@
 "use client";
 
+import { toKSTDateFullString } from "@/lib/utils";
 import { Info } from "lucide-react";
 import { useState } from "react";
 
@@ -15,9 +16,14 @@ type Props = {
 
 export function BroadcastCalendar({ trendRows }: Props) {
   const broadcastDates = new Set(trendRows.map((r) => r.date));
+  const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const currentMonth = kstNow.toISOString().slice(0, 7); // "2026-08"
 
   const months = Array.from(
-    new Set(trendRows.map((r) => r.date.slice(0, 7))),
+    new Set([
+      ...trendRows.map((r) => r.date.slice(0, 7)),
+      currentMonth, // 현재 월 항상 포함
+    ]),
   ).sort();
 
   const [activeMonth, setActiveMonth] = useState(
@@ -33,7 +39,13 @@ export function BroadcastCalendar({ trendRows }: Props) {
     });
   }
 
-  const days = getDaysInMonth(activeMonth);
+  kstNow.setUTCDate(kstNow.getUTCDate() - 1);
+  const kstYesterday = kstNow.toISOString().slice(0, 10); // "2026-08-02"
+
+  const days = getDaysInMonth(activeMonth).filter(
+    (date) => date <= kstYesterday,
+  );
+
   const broadcastCount = days.filter((d) => broadcastDates.has(d)).length;
   const offCount = days.length - broadcastCount;
 

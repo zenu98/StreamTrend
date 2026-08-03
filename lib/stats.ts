@@ -211,6 +211,7 @@ export async function get3DaysTopGames() {
       snapshotCount: number;
       maxViewers: number;
       peakViewers: number;
+      broadcastCount: number;
     }
   >();
 
@@ -222,6 +223,7 @@ export async function get3DaysTopGames() {
       snapshotCount: 0,
       maxViewers: 0,
       peakViewers: 0,
+      broadcastCount: 0,
     };
     categoryMap.set(row.liveCategoryValue, {
       ...prev,
@@ -229,6 +231,7 @@ export async function get3DaysTopGames() {
       snapshotCount: prev.snapshotCount + row.snapshotCount,
       maxViewers: Math.max(prev.maxViewers, row.maxViewers),
       peakViewers: Math.max(prev.peakViewers, row.peakViewers),
+      broadcastCount: prev.broadcastCount + row.broadcastCount,
     });
   }
 
@@ -244,8 +247,11 @@ export async function get3DaysTopGames() {
     maxViewers: d.maxViewers,
     peakViewers: d.peakViewers,
     posterImageUrl: posterMap.get(d.liveCategory) ?? null,
+    broadcastCount: d.broadcastCount,
   }));
-
+  const top10ByBroadcast = [...allGames]
+    .sort((a, b) => b.broadcastCount - a.broadcastCount)
+    .slice(0, 11);
   // 평균시청자 기준 상위 10개로 스트리머 조회
   const top10ByConcurrent = [...allGames]
     .sort((a, b) => b.concurrentViewers - a.concurrentViewers)
@@ -311,9 +317,52 @@ export async function get3DaysTopGames() {
     byConcurrent: addStreamer(top10ByConcurrent),
     byMax: addStreamer(top10ByMax),
     byPeak: addStreamer(top10ByPeak),
+    byBroadcast: addStreamer(top10ByBroadcast), // ← 추가
+    allGames,
   };
 }
+export async function get7DaysAllGames() {
+  "use cache";
+  cacheLife("statsTime");
 
+  const from = getPeriodFrom("weekly");
+
+  const rows = await prisma.dailySummary.findMany({
+    where: { date: { gte: from }, categoryType: "GAME" },
+  });
+
+  const categoryMap = new Map<
+    string,
+    {
+      liveCategory: string;
+      totalViewers: number;
+      snapshotCount: number;
+      broadcastCount: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const prev = categoryMap.get(row.liveCategoryValue) ?? {
+      liveCategory: row.liveCategory,
+      totalViewers: 0,
+      snapshotCount: 0,
+      broadcastCount: 0,
+    };
+    categoryMap.set(row.liveCategoryValue, {
+      ...prev,
+      totalViewers: prev.totalViewers + row.totalViewers,
+      snapshotCount: prev.snapshotCount + row.snapshotCount,
+      broadcastCount: prev.broadcastCount + row.broadcastCount,
+    });
+  }
+
+  return [...categoryMap.values()].map((d) => ({
+    categoryId: d.liveCategory,
+    concurrentViewers:
+      d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
+    broadcastCount: d.broadcastCount,
+  }));
+}
 export async function getWeeklyTopStreamers() {
   "use cache";
   cacheLife("statsTime");

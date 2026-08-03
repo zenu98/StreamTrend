@@ -16,6 +16,8 @@ import { AllTimeRecordCard } from "@/components/shared/AllTimeRecordCard";
 import { ViewerConcentrationSection } from "@/components/shared/ViewerConcentrationSection";
 import { toKSTDateString } from "@/lib/utils";
 import type { Metadata } from "next";
+import { get7DaysAllGames } from "@/lib/stats";
+import { GameScoreCard } from "@/components/game/GameScoreCard";
 
 export async function generateMetadata({
   params,
@@ -54,6 +56,18 @@ export default function GameDetailPage({
   return <GameDetail paramsPromise={params} />;
 }
 
+// 00:00 ~ 06:00시에도 날짜가 넘어가지 않도록
+function getTodayLabel(): string {
+  const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const kstHour = kstNow.getUTCHours();
+
+  // 06:00 이전이면 어제 날짜
+  if (kstHour < 6) {
+    kstNow.setUTCDate(kstNow.getUTCDate() - 1);
+  }
+
+  return kstNow.toISOString().slice(5, 10);
+}
 async function GameDetail({
   paramsPromise,
 }: {
@@ -61,16 +75,21 @@ async function GameDetail({
 }) {
   const { category } = await paramsPromise;
   const categoryId = decodeURIComponent(category);
-
-  const [stats, liveStats, categoryInfo, allCategories, topStreamers] =
-    await Promise.all([
-      getGameStats(categoryId),
-      getGameLiveStats(categoryId),
-      getGameCategoryInfo(categoryId),
-      getAllCategories(),
-      getGameTopStreamers(categoryId),
-    ]);
-
+  const [
+    stats,
+    liveStats,
+    categoryInfo,
+    allCategories,
+    topStreamers,
+    allGames,
+  ] = await Promise.all([
+    getGameStats(categoryId),
+    getGameLiveStats(categoryId),
+    getGameCategoryInfo(categoryId),
+    getAllCategories(),
+    getGameTopStreamers(categoryId),
+    get7DaysAllGames(),
+  ]);
   return (
     <main className="p-4  mx-auto w-full  space-y-8 ">
       {/* 헤더 */}
@@ -96,6 +115,12 @@ async function GameDetail({
 
       <section className="flex-col space-y-4">
         {/* <h2 className="text-lg md:text-xl font-bold">현재</h2> */}
+        <GameScoreCard
+          categoryId={categoryId}
+          allRows={stats.allRows}
+          allGames={allGames}
+        />
+
         <AllTimeRecordCard
           maxViewers={stats.maxViewers}
           maxViewersDate={stats.maxViewersDate}
@@ -134,7 +159,7 @@ async function GameDetail({
           // topStreamerViewers={liveStats.currentMaxViewer?.concurrentUserCount}
           trendRows={stats.allRows}
           currentViewers={liveStats.currentViewers}
-          todayLabel={toKSTDateString(new Date())}
+          todayLabel={getTodayLabel()}
         />
       </section>
 
