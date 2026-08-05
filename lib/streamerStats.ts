@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { toKSTDateString } from "./utils";
+function getKSTBusinessDayStart(now: Date): Date {
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const boundary = new Date(kstNow);
+  boundary.setUTCHours(6, 0, 0, 0);
+  // 06:00 이전이면 아직 전날 영업일이 진행 중
+  if (kstNow.getUTCHours() < 6) {
+    boundary.setUTCDate(boundary.getUTCDate() - 1);
+  }
+  return new Date(boundary.getTime() - 9 * 60 * 60 * 1000);
+}
 
 export async function getStreamerStats(channelId: string) {
   "use cache";
@@ -8,10 +18,7 @@ export async function getStreamerStats(channelId: string) {
 
   // 당일: LiveSnapshot에서 실시간 조회
   const now = new Date();
-  const kstNow2 = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const kstMidnight = new Date(kstNow2);
-  kstMidnight.setUTCHours(0, 0, 0, 0);
-  const todayFrom = new Date(kstMidnight.getTime() - 9 * 60 * 60 * 1000);
+  const todayFrom = getKSTBusinessDayStart(now);
 
   const todaySnapshots = await prisma.liveSnapshot.findMany({
     where: {

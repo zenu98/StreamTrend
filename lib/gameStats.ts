@@ -197,6 +197,9 @@ export async function getGameStats(categoryId: string) {
 
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  if (kstNow.getUTCHours() < 6) {
+    kstNow.setUTCDate(kstNow.getUTCDate() - 1);
+  }
   kstNow.setUTCHours(0, 0, 0, 0);
 
   const fromYear = new Date(
@@ -204,7 +207,11 @@ export async function getGameStats(categoryId: string) {
   );
 
   const rows = await prisma.dailySummary.findMany({
-    where: { liveCategory: categoryId, date: { gte: fromYear } },
+    where: {
+      liveCategory: categoryId,
+      categoryType: "GAME",
+      date: { gte: fromYear },
+    },
     orderBy: { date: "asc" },
   });
 

@@ -18,11 +18,13 @@ type Props = {
     broadcastCount: number;
   }[];
 };
+
 function getGradientColors(score: number): [string, string] {
-  if (score >= 70) return ["#1bb373", "#00e5a0"]; // 초록 계열
-  if (score >= 40) return ["#f59e0b", "#1bb373"]; // 주황→초록
-  return ["#e24b4a", "#f59e0b"]; // 빨강→주황
+  if (score >= 70) return ["#1bb373", "#00e5a0"];
+  if (score >= 40) return ["#f59e0b", "#1bb373"];
+  return ["#e24b4a", "#f59e0b"];
 }
+
 export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const sortedByViewers = [...allGames].sort(
     (a, b) => b.concurrentViewers - a.concurrentViewers,
@@ -31,7 +33,6 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
     (a, b) => b.broadcastCount - a.broadcastCount,
   );
 
-  // 2위를 최대값으로
   const maxViewers =
     sortedByViewers[1]?.concurrentViewers ??
     sortedByViewers[0]?.concurrentViewers ??
@@ -40,8 +41,6 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
     sortedByBroadcast[1]?.broadcastCount ??
     sortedByBroadcast[0]?.broadcastCount ??
     1;
-
-  // 1위 여부
 
   const currentGame = allGames.find((g) => g.categoryId === categoryId);
   const currentViewers = currentGame?.concurrentViewers ?? 0;
@@ -63,10 +62,12 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
         ),
       );
 
-  const baseScore = isFirst
+  // 추세 감점 없이, 시청자 0.6 + 방송수 0.4로만 계산
+  const totalScore = isFirst
     ? 100
     : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
 
+  // 추세는 점수에 영향 없이 표시 전용
   const recent3 = allRows.slice(-3);
   const prev4 = allRows.slice(-7, -3);
   const recentAvg =
@@ -79,65 +80,25 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const avg = (recentAvg + prevAvg) / 2;
   const changeRate = avg > 0 ? diff / avg : 0;
 
-  let trendPenalty = 0;
-  if (changeRate <= -0.5) trendPenalty = 20;
-  else if (changeRate <= -0.3) trendPenalty = 10;
-  const totalScore = isFirst ? 100 : Math.max(1, baseScore - trendPenalty);
-
-  let persistence: number;
-  let persistenceLabel: string;
-  let persistenceColor: string;
-
-  if (changeRate <= -0.5) {
-    persistence = 20;
-    persistenceLabel = "급락";
-    persistenceColor = "#e24b4a";
-  } else if (changeRate <= -0.3) {
-    persistence = 40;
-    persistenceLabel = "하락세";
-    persistenceColor = "#f97316";
+  let trendLabel: string;
+  if (changeRate <= -0.3) {
+    trendLabel = "하락세";
+  } else if (changeRate >= 0.3) {
+    trendLabel = "상승세";
   } else {
-    persistence = 75;
-    persistenceLabel = "지속";
-    persistenceColor = "#00ce7a";
+    trendLabel = "유지";
   }
 
   const segments = [
-    { color: "#e24b4a", active: persistenceLabel === "급락" },
-    { color: "#f59e0b", active: persistenceLabel === "하락세" },
-    { color: "#00ce7a", active: persistenceLabel === "지속" },
+    { color: "#e24b4a", active: trendLabel === "하락세" },
+    { color: "#f59e0b", active: trendLabel === "유지" },
+    { color: "#00ce7a", active: trendLabel === "상승세" },
   ];
 
   const color = ScoreRingColor(totalScore);
   const viewerColor = ScoreRingColor(viewerPercentile);
   const countColor = ScoreRingColor(countPercentile);
   const [gradStart, gradEnd] = getGradientColors(totalScore);
-  const pct = totalScore;
-  console.log("=== 스트림트렌드 인기 점수 디버그 ===");
-  console.log("게임:", categoryId);
-  console.log("전체 게임 수:", allGames.length);
-  console.log("");
-  console.log("[시청자]");
-  console.log("  현재 시청자:", currentViewers);
-  console.log("  최대 시청자:", maxViewers);
-  console.log("  로그 점수:", viewerPercentile);
-  console.log("");
-  console.log("[방송 수]");
-  console.log("  현재 방송 수:", currentBroadcast);
-  console.log("  최대 방송 수:", maxBroadcast);
-  console.log("  로그 점수:", countPercentile);
-  console.log("");
-  console.log("[지속성]");
-  console.log("  최근 3일 평균:", Math.round(recentAvg));
-  console.log("  이전 4일 평균:", Math.round(prevAvg));
-  console.log("  유지율:", persistence);
-  console.log("");
-  console.log("[종합]");
-  console.log("  시청자 기여:", Math.round(viewerPercentile * 0.4));
-  console.log("  방송 수 기여:", Math.round(countPercentile * 0.3));
-  console.log("  지속성 기여:", Math.round(persistence * 0.3));
-  console.log("  종합 점수:", totalScore);
-  console.log("=====================================");
 
   return (
     <div className="rounded-2xl border bg-card px-5 py-5 space-y-4 sm:min-w-[45%] sm:w-fit">
@@ -160,23 +121,17 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
               환산해요
             </p>
             <p>
-              · <span className="text-white/90">추세 감점</span> — 최근 3일
-              평균이 이전 4일 평균 대비 30~50% 하락 시 10점 감점, 50% 이상 하락
-              시 20점 감점돼요
-            </p>
-            <p>
-              · 종합 점수 = 시청자 점수 × 0.6 + 방송 수 점수 × 0.4 - 추세 감점
+              · <span className="text-white/90">추세</span>는 점수에 반영되지
+              않고, 최근 3일 평균과 이전 4일 평균을 비교해 참고용으로만
+              보여드려요
             </p>
           </div>
         </div>
       </div>
 
-      {/* 종합 점수 */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {/* 종합 점수 링 */}
         <ChartRadialText title="스트림트렌드 인기 점수" value={totalScore} />
 
-        {/* 세부 지표 */}
         <div className="flex-1 space-y-3">
           <div>
             <div className="flex justify-between mb-1">
@@ -205,11 +160,10 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
               />
             </div>
           </div>
-          {/* 추세 */}
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-xs text-muted-foreground">추세</span>
-              <span className="text-xs font-medium ">{persistenceLabel}</span>
+              <span className="text-xs font-medium">{trendLabel}</span>
             </div>
             <div className="flex gap-1">
               {segments.map((seg, i) => (

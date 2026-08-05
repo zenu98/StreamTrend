@@ -96,26 +96,28 @@ function ScoreBadge({
 function getTrendSegments(changeRate?: number) {
   const rate = changeRate ?? 0;
   const colors = ["#e24b4a", "#f59e0b", "#00ce7a"] as const;
+
   const justifyByIndex = [
     "justify-start",
     "justify-center",
     "justify-end",
   ] as const;
-  if (rate <= -0.5)
+
+  if (rate <= -0.3)
     return {
-      label: "급락",
+      label: "하락세",
       activeIndex: 0,
       colors,
       justify: justifyByIndex[0],
     };
-  if (rate <= -0.3)
+  if (rate >= 0.3)
     return {
-      label: "하락세",
-      activeIndex: 1,
+      label: "상승세",
+      activeIndex: 2,
       colors,
-      justify: justifyByIndex[1],
+      justify: justifyByIndex[2],
     };
-  return { label: "인기", activeIndex: 2, colors, justify: justifyByIndex[2] };
+  return { label: "유지", activeIndex: 1, colors, justify: justifyByIndex[1] };
 }
 
 // GameScoreCard와 동일한 3구간 추세 표시 (급락/하락세/지속)

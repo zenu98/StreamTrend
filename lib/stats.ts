@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { toKSTDateString } from "./utils";
-import { getLives } from "./lives";
+import { BROADCAST_CHANNEL_IDS, getLives } from "./lives";
 export async function getStatsByDate(period: "weekly" | "monthly") {
   "use cache";
   cacheLife("statsTime");
@@ -78,6 +78,9 @@ export function getPeriodFrom(
 ): Date {
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  if (kstNow.getUTCHours() < 6) {
+    kstNow.setUTCDate(kstNow.getUTCDate() - 1);
+  }
   kstNow.setUTCHours(0, 0, 0, 0);
   const todayKSTasUTC = new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
 
@@ -448,14 +451,10 @@ export async function get7DaysAllGames() {
     const avg = (recentAvg + prevAvg) / 2;
     const changeRate = avg > 0 ? diff / avg : 0;
 
-    let trendPenalty = 0;
-    if (changeRate <= -0.5) trendPenalty = 30;
-    else if (changeRate <= -0.3) trendPenalty = 15;
-
     const baseScore = isFirst
       ? 100
       : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
-    const totalScore = isFirst ? 100 : Math.max(1, baseScore - trendPenalty);
+    const totalScore = isFirst ? 100 : baseScore; // 감점 없음
 
     return {
       categoryId: g.categoryId,
@@ -488,7 +487,10 @@ export async function getWeeklyTopStreamers() {
   const [rows, allGameRows] = await Promise.all([
     prisma.streamerDailySummary.groupBy({
       by: ["channelId", "channelName", "channelImageUrl"],
-      where: { date: { gte: from } },
+      where: {
+        date: { gte: from },
+        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] },
+      },
       _sum: {
         totalViewers: true,
         broadcastCount: true,
@@ -499,7 +501,10 @@ export async function getWeeklyTopStreamers() {
     }),
     prisma.streamerDailySummary.groupBy({
       by: ["channelId", "liveCategoryValue"],
-      where: { date: { gte: from } },
+      where: {
+        date: { gte: from },
+        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] },
+      },
       _sum: {
         totalViewers: true,
       },
@@ -564,13 +569,19 @@ export async function get3DaysTopStreamers() {
   const [rows, allGameRows] = await Promise.all([
     prisma.streamerDailySummary.groupBy({
       by: ["channelId", "channelName", "channelImageUrl"],
-      where: { date: { gte: from } },
+      where: {
+        date: { gte: from },
+        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] }, // ← 추가
+      },
       _sum: { totalViewers: true, broadcastCount: true },
       _max: { maxViewers: true },
     }),
     prisma.streamerDailySummary.groupBy({
       by: ["channelId", "liveCategoryValue"],
-      where: { date: { gte: from } },
+      where: {
+        date: { gte: from },
+        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] }, // ← 추가
+      },
       _sum: { totalViewers: true },
     }),
   ]);
