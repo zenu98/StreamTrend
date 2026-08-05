@@ -142,7 +142,7 @@ export async function summarizeYesterday(
     const effectiveCategoryType = isSportsBroadcast(snap)
       ? "SPORTS"
       : snap.categoryType;
-    const key = `${snap.channelId}__${snap.liveCategory}`;
+    const key = `${snap.channelId}__${snap.liveCategory}__${effectiveCategoryType}`;
     const prev = streamerMap.get(key) ?? {
       channelId: snap.channelId,
       channelName: snap.channelName,
