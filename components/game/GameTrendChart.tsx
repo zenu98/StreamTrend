@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { ChartLineLabel } from "@/components/ui/charts/chart-line-label";
+import { getTodayLabel } from "@/lib/utils";
 
 type Row = {
   date: string;
@@ -53,23 +54,21 @@ export function GameTrendChart({
       rows = rows.filter((r) => r.date >= from && r.date <= to);
     }
 
-    // 오늘 실시간 데이터 추가
     if (liveStats) {
-      const today = format(new Date(), "MM-dd");
-      const alreadyExists = rows.some((r) => r.date === today);
-      if (!alreadyExists) {
-        rows = [
-          ...rows,
-          {
-            date: today,
-            totalViewers: liveStats.currentViewers,
-            concurrentViewers: liveStats.currentViewers,
-            broadcastCount: liveStats.currentCount,
-            maxViewers: liveStats.currentViewers,
-            peakViewers: liveStats.currentViewers,
-          },
-        ];
-      }
+      const today = getTodayLabel();
+      const liveRow = {
+        date: today,
+        totalViewers: liveStats.currentViewers,
+        concurrentViewers: liveStats.currentViewers,
+        broadcastCount: liveStats.currentCount,
+        maxViewers: liveStats.currentViewers,
+        peakViewers: liveStats.currentViewers,
+      };
+      const idx = rows.findIndex((r) => r.date === today);
+      rows =
+        idx >= 0
+          ? [...rows.slice(0, idx), liveRow, ...rows.slice(idx + 1)]
+          : [...rows, liveRow];
     }
 
     return rows;

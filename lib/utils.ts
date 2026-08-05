@@ -24,10 +24,23 @@ export function formatKoreanDate(dateStr: string): string {
   const [mm, dd] = dateStr.split("-");
   const m = parseInt(mm, 10);
   const d = parseInt(dd, 10);
-  return Number.isFinite(m) && Number.isFinite(d) ? `${m}월 ${d}일` : dateStr; // 혹시 다른 포맷이 들어와도 안전하게
+  return Number.isFinite(m) && Number.isFinite(d) ? `${m}월 ${d}일` : dateStr;
 }
 export function toKSTDateFullString(date: Date): string {
   return new Date(date.getTime() + 9 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10); // "2026-08-03"
+}
+
+// 00:00 ~ 06:00시에도 날짜가 넘어가지 않도록 하는 함수
+export function getTodayLabel(): string {
+  const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const kstHour = kstNow.getUTCHours();
+
+  // 06:00 이전이면 어제 날짜
+  if (kstHour < 6) {
+    kstNow.setUTCDate(kstNow.getUTCDate() - 1);
+  }
+
+  return kstNow.toISOString().slice(5, 10);
 }
