@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { revalidateTag } from "next/cache";
+import { isSportsBroadcast } from "./lives";
 
 function getKSTDayBoundary(baseDate: Date, offsetDays = 0): Date {
   const kstBase = new Date(baseDate.getTime() + 9 * 60 * 60 * 1000);
@@ -73,11 +74,15 @@ export async function summarizeYesterday(
 
   for (const snap of snapshots) {
     if (!snap.liveCategoryValue) continue;
-    const key = `${snap.liveCategoryValue}__${snap.categoryType}`;
+    // 대회/같이보기 방송은 실제 categoryType이 GAME이어도 SPORTS로 취급
+    const effectiveCategoryType = isSportsBroadcast(snap)
+      ? "SPORTS"
+      : snap.categoryType;
+    const key = `${snap.liveCategoryValue}__${effectiveCategoryType}`;
     const prev = categoryMap.get(key) ?? {
       liveCategory: snap.liveCategory,
       liveCategoryValue: snap.liveCategoryValue,
-      categoryType: snap.categoryType,
+      categoryType: effectiveCategoryType,
       totalViewers: 0,
       count: 0,
       snapsMap: new Map<number, number>(),
@@ -134,6 +139,9 @@ export async function summarizeYesterday(
 
   for (const snap of snapshots) {
     if (!snap.liveCategoryValue) continue;
+    const effectiveCategoryType = isSportsBroadcast(snap)
+      ? "SPORTS"
+      : snap.categoryType;
     const key = `${snap.channelId}__${snap.liveCategory}`;
     const prev = streamerMap.get(key) ?? {
       channelId: snap.channelId,
@@ -141,7 +149,7 @@ export async function summarizeYesterday(
       channelImageUrl: snap.channelImageUrl ?? null,
       liveCategory: snap.liveCategory,
       liveCategoryValue: snap.liveCategoryValue,
-      categoryType: snap.categoryType,
+      categoryType: effectiveCategoryType,
       maxViewers: 0,
       totalViewers: 0,
       count: 0,

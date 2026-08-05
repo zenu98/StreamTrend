@@ -1,8 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 
-const LCK_CHANNEL_ID = "9381e7d6816e6d915a44a13c0195b202";
+export const LCK_CHANNEL_ID = "9381e7d6816e6d915a44a13c0195b202";
 
+export function isSportsBroadcast(s: { channelId: string; liveTitle: string }) {
+  return (
+    s.channelId === LCK_CHANNEL_ID ||
+    s.liveTitle.toLowerCase().includes("watchparty") ||
+    /msi\s*2026/i.test(s.liveTitle) ||
+    s.liveTitle.includes("같이보기")
+  );
+}
 export async function getLives() {
   "use cache";
   cacheLife("statsTime");
@@ -32,17 +40,12 @@ export async function getLives() {
 
   const collectedAt = latest.collectedAt.toISOString();
 
-  // 게임: GAME + LCK 제외 + watchparty 제외 였는데 그냥 통합함.
-  const gameFiltered = snapshots;
+  // 게임: LCK 제외 + watchparty 제외
+  const gameFiltered = snapshots.filter((s) => !isSportsBroadcast(s));
 
-  // 같이보기: SPORTS + LCK + watchparty
+  // 같이보기: SPORTS + 특정채널 + watchparty
   const sportsFiltered = snapshots.filter(
-    (s) =>
-      s.categoryType === "SPORTS" ||
-      s.channelId === LCK_CHANNEL_ID ||
-      s.liveTitle.toLowerCase().includes("watchparty") ||
-      /msi\s*2026/i.test(s.liveTitle) ||
-      s.liveTitle.includes("같이보기"),
+    (s) => s.categoryType === "SPORTS" || isSportsBroadcast(s),
   );
 
   function aggregateByCategory(snaps: typeof snapshots) {
