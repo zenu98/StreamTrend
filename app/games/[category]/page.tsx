@@ -81,7 +81,7 @@ async function GameDetail({
     categoryInfo,
     allCategories,
     topStreamers,
-    allGames,
+    weeklyGames,
   ] = await Promise.all([
     getGameStats(categoryId),
     getGameLiveStats(categoryId),
@@ -118,7 +118,7 @@ async function GameDetail({
         <GameScoreCard
           categoryId={categoryId}
           allRows={stats.allRows}
-          allGames={allGames}
+          allGames={weeklyGames.allGames}
         />
 
         <AllTimeRecordCard

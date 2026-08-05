@@ -327,27 +327,60 @@ export async function get7DaysAllGames() {
 
   const from = getPeriodFrom("weekly");
 
-  const rows = await prisma.dailySummary.findMany({
-    where: { date: { gte: from }, categoryType: "GAME" },
-  });
+  const [rows, categories] = await Promise.all([
+    prisma.dailySummary.findMany({
+      where: { date: { gte: from }, categoryType: "GAME" },
+      orderBy: { date: "asc" },
+    }),
+    prisma.category.findMany({
+      select: { categoryId: true, categoryValue: true, posterImageUrl: true },
+    }),
+  ]);
+
+  const posterMap = new Map(
+    categories.map((c) => [
+      c.categoryId,
+      { posterImageUrl: c.posterImageUrl, categoryValue: c.categoryValue },
+    ]),
+  );
 
   const categoryMap = new Map<
     string,
     {
       liveCategory: string;
+      liveCategoryValue: string;
       totalViewers: number;
       snapshotCount: number;
       broadcastCount: number;
+      dailyViewers: { date: string; concurrentViewers: number }[];
     }
   >();
 
   for (const row of rows) {
     const prev = categoryMap.get(row.liveCategoryValue) ?? {
       liveCategory: row.liveCategory,
+      liveCategoryValue: row.liveCategoryValue,
       totalViewers: 0,
       snapshotCount: 0,
       broadcastCount: 0,
+      dailyViewers: [],
     };
+    const date = toKSTDateString(row.date);
+    const existing = prev.dailyViewers.find((d) => d.date === date);
+    if (existing) {
+      existing.concurrentViewers +=
+        row.snapshotCount > 0
+          ? Math.round(row.totalViewers / row.snapshotCount)
+          : 0;
+    } else {
+      prev.dailyViewers.push({
+        date,
+        concurrentViewers:
+          row.snapshotCount > 0
+            ? Math.round(row.totalViewers / row.snapshotCount)
+            : 0,
+      });
+    }
     categoryMap.set(row.liveCategoryValue, {
       ...prev,
       totalViewers: prev.totalViewers + row.totalViewers,
@@ -356,12 +389,94 @@ export async function get7DaysAllGames() {
     });
   }
 
-  return [...categoryMap.values()].map((d) => ({
+  const allGames = [...categoryMap.values()].map((d) => ({
     categoryId: d.liveCategory,
+    category:
+      posterMap.get(d.liveCategory)?.categoryValue ?? d.liveCategoryValue,
     concurrentViewers:
       d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
     broadcastCount: d.broadcastCount,
+    posterImageUrl: posterMap.get(d.liveCategory)?.posterImageUrl ?? null,
+    dailyViewers: d.dailyViewers,
   }));
+
+  const sortedByViewers = [...allGames].sort(
+    (a, b) => b.concurrentViewers - a.concurrentViewers,
+  );
+  const sortedByBroadcast = [...allGames].sort(
+    (a, b) => b.broadcastCount - a.broadcastCount,
+  );
+  const maxViewers =
+    sortedByViewers[1]?.concurrentViewers ??
+    sortedByViewers[0]?.concurrentViewers ??
+    1;
+  const maxBroadcast =
+    sortedByBroadcast[1]?.broadcastCount ??
+    sortedByBroadcast[0]?.broadcastCount ??
+    1;
+  const firstCategoryId = sortedByViewers[0]?.categoryId;
+
+  const withScore = allGames.map((g) => {
+    const isFirst = g.categoryId === firstCategoryId;
+
+    const viewerPercentile = isFirst
+      ? 100
+      : Math.min(
+          98,
+          Math.round(
+            (Math.sqrt(g.concurrentViewers) / Math.sqrt(maxViewers)) * 100,
+          ),
+        );
+    const countPercentile = isFirst
+      ? 100
+      : Math.min(
+          98,
+          Math.round(
+            (Math.sqrt(g.broadcastCount) / Math.sqrt(maxBroadcast)) * 100,
+          ),
+        );
+
+    const days = g.dailyViewers;
+    const recent3 = days.slice(-3);
+    const prev4 = days.slice(-7, -3);
+    const recentAvg =
+      recent3.reduce((s, r) => s + r.concurrentViewers, 0) /
+      (recent3.length || 1);
+    const prevAvg =
+      prev4.reduce((s, r) => s + r.concurrentViewers, 0) / (prev4.length || 1);
+    const diff = recentAvg - prevAvg;
+    const avg = (recentAvg + prevAvg) / 2;
+    const changeRate = avg > 0 ? diff / avg : 0;
+
+    let trendPenalty = 0;
+    if (changeRate <= -0.5) trendPenalty = 30;
+    else if (changeRate <= -0.3) trendPenalty = 15;
+
+    const baseScore = isFirst
+      ? 100
+      : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
+    const totalScore = isFirst ? 100 : Math.max(1, baseScore - trendPenalty);
+
+    return {
+      categoryId: g.categoryId,
+      category: g.category,
+      concurrentViewers: g.concurrentViewers,
+      broadcastCount: g.broadcastCount,
+      posterImageUrl: g.posterImageUrl,
+      totalScore,
+      changeRate,
+      topStreamer: null,
+    };
+  });
+
+  const byScore = [...withScore]
+    .sort((a, b) => b.totalScore - a.totalScore)
+    .slice(0, 11);
+
+  return {
+    allGames: allGames.map(({ dailyViewers: _, ...rest }) => rest),
+    byScore,
+  };
 }
 export async function getWeeklyTopStreamers() {
   "use cache";

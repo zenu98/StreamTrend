@@ -17,7 +17,7 @@ type Props = {
 };
 
 export function ChartRadialText({ title, value, subtitle }: Props) {
-  const gradientKey = value >= 70 ? "high" : value >= 40 ? "mid" : "low";
+  const gradientKey = value >= 7 ? "high" : value >= 4 ? "mid" : "low";
   const gradient = gradients[gradientKey];
   const gradientId = `radialGradient-${gradientKey}`;
 

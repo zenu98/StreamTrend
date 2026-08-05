@@ -8,6 +8,7 @@ import {
   getWeeklyTopStreamers,
   get3DaysTopStreamers,
   getLiveStreamers,
+  get7DaysAllGames,
 } from "@/lib/stats";
 import { getLives } from "@/lib/lives";
 import { Suspense } from "react";
@@ -27,9 +28,10 @@ export default function Home() {
 }
 
 async function HomeContent() {
-  const [topGames, topStreamers] = await Promise.all([
+  const [topGames, topStreamers, weeklyGames] = await Promise.all([
     get3DaysTopGames(),
     get3DaysTopStreamers(),
+    get7DaysAllGames(),
   ]);
 
   // await 하지 않음 — 백그라운드에서 병렬로 진행되되, 페이지 렌더링을 막지 않음
@@ -41,7 +43,7 @@ async function HomeContent() {
       <TrendingGame
         livePromise={livePromise}
         byMax={topGames.byMax}
-        byPeak={topGames.byPeak}
+        byScore={weeklyGames.byScore}
       />
       <TrendingStreamer
         streamers={topStreamers}

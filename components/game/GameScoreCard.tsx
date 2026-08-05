@@ -24,19 +24,48 @@ function getGradientColors(score: number): [string, string] {
   return ["#e24b4a", "#f59e0b"]; // 빨강→주황
 }
 export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
-  const maxViewers = Math.max(...allGames.map((g) => g.concurrentViewers));
-  const maxBroadcast = Math.max(...allGames.map((g) => g.broadcastCount));
+  const sortedByViewers = [...allGames].sort(
+    (a, b) => b.concurrentViewers - a.concurrentViewers,
+  );
+  const sortedByBroadcast = [...allGames].sort(
+    (a, b) => b.broadcastCount - a.broadcastCount,
+  );
+
+  // 2위를 최대값으로
+  const maxViewers =
+    sortedByViewers[1]?.concurrentViewers ??
+    sortedByViewers[0]?.concurrentViewers ??
+    1;
+  const maxBroadcast =
+    sortedByBroadcast[1]?.broadcastCount ??
+    sortedByBroadcast[0]?.broadcastCount ??
+    1;
+
+  // 1위 여부
 
   const currentGame = allGames.find((g) => g.categoryId === categoryId);
   const currentViewers = currentGame?.concurrentViewers ?? 0;
   const currentBroadcast = currentGame?.broadcastCount ?? 0;
+  const isFirst = sortedByViewers[0]?.categoryId === categoryId;
 
-  const viewerPercentile = Math.round(
-    (Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100,
-  );
-  const countPercentile = Math.round(
-    (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
-  );
+  const viewerPercentile = isFirst
+    ? 100
+    : Math.min(
+        98,
+        Math.round((Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100),
+      );
+  const countPercentile = isFirst
+    ? 100
+    : Math.min(
+        98,
+        Math.round(
+          (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
+        ),
+      );
+
+  const baseScore = isFirst
+    ? 100
+    : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
 
   const recent3 = allRows.slice(-3);
   const prev4 = allRows.slice(-7, -3);
@@ -50,6 +79,11 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const avg = (recentAvg + prevAvg) / 2;
   const changeRate = avg > 0 ? diff / avg : 0;
 
+  let trendPenalty = 0;
+  if (changeRate <= -0.5) trendPenalty = 20;
+  else if (changeRate <= -0.3) trendPenalty = 10;
+  const totalScore = isFirst ? 100 : Math.max(1, baseScore - trendPenalty);
+
   let persistence: number;
   let persistenceLabel: string;
   let persistenceColor: string;
@@ -61,32 +95,18 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   } else if (changeRate <= -0.3) {
     persistence = 40;
     persistenceLabel = "하락세";
-    persistenceColor = "#f59e0b";
-  } else if (changeRate <= 0.3) {
-    persistence = 65;
-    persistenceLabel = "유지";
-    persistenceColor = "#60a5fa";
-  } else if (changeRate <= 1.0) {
-    persistence = 85;
-    persistenceLabel = "상승세";
-    persistenceColor = "#6ee7b7";
+    persistenceColor = "#f97316";
   } else {
-    persistence = 100;
-    persistenceLabel = "급상승";
-    persistenceColor = "#1bb373";
+    persistence = 75;
+    persistenceLabel = "지속";
+    persistenceColor = "#00ce7a";
   }
 
   const segments = [
     { color: "#e24b4a", active: persistenceLabel === "급락" },
     { color: "#f59e0b", active: persistenceLabel === "하락세" },
-    { color: "#60a5fa", active: persistenceLabel === "유지" },
-    { color: "#6ee7b7", active: persistenceLabel === "상승세" },
-    { color: "#00ce7a", active: persistenceLabel === "급상승" },
+    { color: "#00ce7a", active: persistenceLabel === "지속" },
   ];
-
-  const totalScore = Math.round(
-    viewerPercentile * 0.4 + countPercentile * 0.3 + persistence * 0.3,
-  );
 
   const color = ScoreRingColor(totalScore);
   const viewerColor = ScoreRingColor(viewerPercentile);
@@ -130,18 +150,22 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
           <div className="absolute left-0 top-full mt-2 w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-2">
             <p className="font-semibold text-white/90 mb-1">점수 계산 기준</p>
             <p>
-              · <span className="text-white/90">시청자 (40%)</span> — 최근 7일
-              평균 시청자를 전체 게임 대비 환산해요
+              · <span className="text-white/90">시청자 (60%)</span> — 최근 7일
+              평균 동시시청자의 제곱근을 전체 게임 최고치의 제곱근으로 나눠
+              0~98점으로 환산해요. 1위 게임은 100점이에요
             </p>
             <p>
-              · <span className="text-white/90">방송 수 (30%)</span> — 최근 7일
-              방송 수를 전체 게임 대비 환산해요. 소수 스트리머에 의존하는지
-              저변이 넓은지를 반영해요
+              · <span className="text-white/90">방송 수 (40%)</span> — 최근 7일
+              방송 수의 제곱근을 전체 게임 최고치의 제곱근으로 나눠 0~98점으로
+              환산해요
             </p>
             <p>
-              · <span className="text-white/90">추세 (30%)</span> — 최근 3일
-              평균 시청자와 이전 4일 평균을 비교해요. 상승 중이면 높은 점수,
-              하락 중이면 낮은 점수예요
+              · <span className="text-white/90">추세 감점</span> — 최근 3일
+              평균이 이전 4일 평균 대비 30~50% 하락 시 10점 감점, 50% 이상 하락
+              시 20점 감점돼요
+            </p>
+            <p>
+              · 종합 점수 = 시청자 점수 × 0.6 + 방송 수 점수 × 0.4 - 추세 감점
             </p>
           </div>
         </div>

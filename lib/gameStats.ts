@@ -91,9 +91,15 @@ export async function getGameLiveStats(categoryId: string) {
         live.concurrentUserCount > (max?.concurrentUserCount ?? 0) ? live : max,
       null,
     );
+  const seen = new Set<string>();
   const topLiveStreamers = lives.allGamesRaw
     .filter((live: any) => live.liveCategory === categoryId)
     .sort((a: any, b: any) => b.concurrentUserCount - a.concurrentUserCount)
+    .filter((live: any) => {
+      if (seen.has(live.channelId)) return false;
+      seen.add(live.channelId);
+      return true;
+    })
     .slice(0, 3)
     .map((live: any) => ({
       channelId: live.channelId,

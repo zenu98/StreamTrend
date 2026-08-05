@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, use, useState } from "react";
+import { Suspense, use, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,11 +17,13 @@ type Game = {
   category: string;
   categoryId: string;
   concurrentViewers: number;
-  maxViewers: number;
-  peakViewers: number;
+  maxViewers?: number;
+  peakViewers?: number;
   totalViewers?: number;
   posterImageUrl: string | null;
-  topStreamer: Streamer | null;
+
+  totalScore?: number;
+  changeRate?: number;
 };
 
 type LiveData = {
@@ -32,28 +34,120 @@ type LiveData = {
 type Props = {
   livePromise: Promise<LiveData>;
   byMax: Game[];
-  byPeak: Game[];
+  byScore: Game[];
 };
 
 type ValueKey =
   | "concurrentViewers"
   | "maxViewers"
-  | "peakViewers"
+  | "totalScore"
   | "totalViewers";
 
 const tabs = [
   { label: "실시간 시청자", key: "byLive" as const },
   { label: "최고 동시시청자", key: "byMax" as const },
-  { label: "최고 시청자", key: "byPeak" as const },
+  { label: "인기 점수", key: "byScore" as const },
 ];
 
-const valueConfig: Record<
-  "byMax" | "byPeak",
-  { key: ValueKey; label: string }
-> = {
-  byMax: { key: "maxViewers", label: "최고 동시" },
-  byPeak: { key: "peakViewers", label: "최고" },
-};
+function getGradientColors(score: number): [string, string] {
+  if (score >= 70) return ["#f59e0b", "#1bb373"];
+  if (score >= 40) return ["#e24b4a", "#f59e0b"];
+  return ["#e24b4a", "#f97316"];
+}
+
+// score 숫자 텍스트에 그라데이션(색상)만 입히고 싶을 때 쓰는 style
+function scoreTextGradientStyle(score: number): CSSProperties {
+  const [start, end] = getGradientColors(score);
+  return {
+    backgroundImage: `linear-gradient(135deg, ${start}, ${end})`,
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+  };
+}
+
+// 점수(byScore)에서 공통으로 쓰는 그라데이션 텍스트 + 테두리 박스
+function ScoreBadge({
+  score,
+  className = "",
+  textClassName = "",
+}: {
+  score: number;
+  className?: string;
+  textClassName?: string;
+}) {
+  const [start, end] = getGradientColors(score);
+  return (
+    <div className="inline-flex ">
+      <div
+        className={`inline-flex rounded-sm sm:rounded-lg bg-black/70 backdrop-blur-sm ${className}`}
+      >
+        <span
+          className={`leading-none [font-family:var(--font-anton)] ${textClassName}`}
+          style={scoreTextGradientStyle(score)}
+        >
+          {score}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function getTrendSegments(changeRate?: number) {
+  const rate = changeRate ?? 0;
+  const colors = ["#e24b4a", "#f59e0b", "#00ce7a"] as const;
+  const justifyByIndex = [
+    "justify-start",
+    "justify-center",
+    "justify-end",
+  ] as const;
+  if (rate <= -0.5)
+    return {
+      label: "급락",
+      activeIndex: 0,
+      colors,
+      justify: justifyByIndex[0],
+    };
+  if (rate <= -0.3)
+    return {
+      label: "하락세",
+      activeIndex: 1,
+      colors,
+      justify: justifyByIndex[1],
+    };
+  return { label: "인기", activeIndex: 2, colors, justify: justifyByIndex[2] };
+}
+
+// GameScoreCard와 동일한 3구간 추세 표시 (급락/하락세/지속)
+function TrendBar({
+  changeRate,
+  showLabel = true,
+  className = "",
+}: {
+  changeRate?: number;
+  showLabel?: boolean;
+  className?: string;
+}) {
+  const { label, activeIndex, colors, justify } = getTrendSegments(changeRate);
+  return (
+    <div className={className}>
+      {showLabel && (
+        <div className={`flex items-center mb-1 ${justify}`}>
+          <span className="text-xs font-extrabold text-white/90">{label}</span>
+        </div>
+      )}
+      <div className="flex gap-1">
+        {colors.map((color, i) => (
+          <div
+            key={i}
+            className="flex-1 h-1 rounded-full"
+            style={{ background: color, opacity: i === activeIndex ? 1 : 0.25 }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function formatCollectedAt(collectedAt: string) {
   return new Date(collectedAt).toLocaleString("ko-KR", {
@@ -69,16 +163,15 @@ function formatCollectedAt(collectedAt: string) {
 function PodiumItem({
   game,
   rank,
-  showStreamer,
   valueKey,
 }: {
   game: Game;
   rank: number;
-  showStreamer: boolean;
   valueKey: ValueKey;
 }) {
   const router = useRouter();
   const isFirst = rank === 1;
+  const isScore = valueKey === "totalScore";
   const borderColor =
     rank === 1 ? "#f59e0b" : rank === 2 ? "#9ca3af" : "#b45309";
   const badgeBg = rank === 1 ? "#fef3c7" : rank === 2 ? "#f3f4f6" : "#fef3c7";
@@ -87,7 +180,7 @@ function PodiumItem({
   const badgeColor =
     rank === 1 ? "#92400e" : rank === 2 ? "#374151" : "#78350f";
   const imgWidth = isFirst ? "w-32 md:w-56 lg:w-72" : "w-24 md:w-48 lg:w-64";
-  const value = game[valueKey] ?? 0;
+  const value = (game[valueKey] ?? 0) as number;
 
   return (
     <div
@@ -126,41 +219,30 @@ function PodiumItem({
             <div className="w-full h-full bg-muted" />
           )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/80" />
-          <div className="absolute inset-0 flex items-center justify-center flex-col gap-1">
-            <span className="text-2xl md:text-5xl lg:text-6xl text-gray-200 leading-none [font-family:var(--font-anton)] tracking-wider">
-              {value.toLocaleString()}
-            </span>
-          </div>
+          {isScore ? (
+            <div className="absolute top-2 right-2 md:top-3 md:right-3">
+              <ScoreBadge
+                score={value}
+                className="px-2 py-1 md:px-3 md:py-1.5"
+                textClassName="text-4xl tracking-wider"
+              />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-2xl md:text-5xl lg:text-6xl leading-none [font-family:var(--font-anton)] tracking-wider text-gray-200">
+                {value.toLocaleString()}
+              </span>
+            </div>
+          )}
           <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
             <p className="text-xs md:text-sm font-bold text-white/90 truncate mb-1 md:mb-2">
               {game.category}
             </p>
-            {showStreamer && game.topStreamer && (
-              <Link
-                href={`/streamers/${game.topStreamer.channelId}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-1 md:gap-2">
-                  <div className="w-5 h-5 md:w-8 md:h-8 rounded-full overflow-hidden relative border border-white/30 flex-shrink-0">
-                    {game.topStreamer.channelImageUrl ? (
-                      <Image
-                        src={game.topStreamer.channelImageUrl}
-                        alt={game.topStreamer.channelName}
-                        fill
-                        className="object-cover"
-                        sizes="32px"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center text-xs font-bold text-white">
-                        {game.topStreamer.channelName[0]}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[10px] md:text-xs font-semibold text-white/90 truncate">
-                    {game.topStreamer.channelName}
-                  </span>
-                </div>
-              </Link>
+            {isScore && (
+              <TrendBar
+                changeRate={game.changeRate}
+                className="mb-1 md:mb-1.5"
+              />
             )}
           </div>
         </div>
@@ -171,13 +253,12 @@ function PodiumItem({
 
 function GameRankingBody({
   games,
-  showStreamer,
   valueKey,
 }: {
   games: Game[];
-  showStreamer: boolean;
   valueKey: ValueKey;
 }) {
+  const isScore = valueKey === "totalScore";
   const top3 = games.slice(0, 3);
   const rest = games.slice(3, 12);
   const podiumOrder = [top3[1], top3[0], top3[2]];
@@ -212,23 +293,33 @@ function GameRankingBody({
               <div className="absolute inset-0 bg-muted" />
             )}
             <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-black/20" />
+            {isScore && (
+              <div className="absolute top-2.5 right-2.5">
+                <ScoreBadge
+                  score={top3[0].totalScore ?? 0}
+                  className="px-2.5 py-1"
+                  textClassName="text-3xl"
+                />
+              </div>
+            )}
             <div className="absolute inset-0 flex items-center gap-4 px-4">
-              {/* <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                style={{ background: "#f59e0b", color: "#000" }}
-              >
-                1
-              </div> */}
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-white/90 font-bold text-sm truncate">
                   {top3[0].category}
                 </p>
-                <p
-                  className="text-white text-4xl leading-none mt-0.5"
-                  style={{ fontFamily: "var(--font-anton)" }}
-                >
-                  {(top3[0][valueKey] ?? 0).toLocaleString()}
-                </p>
+                {isScore ? (
+                  <TrendBar
+                    changeRate={top3[0].changeRate}
+                    className="mt-1.5 w-24"
+                  />
+                ) : (
+                  <p
+                    className="text-white text-4xl leading-none mt-0.5"
+                    style={{ fontFamily: "var(--font-anton)" }}
+                  >
+                    {(top3[0][valueKey] as number)?.toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
           </Link>
@@ -240,8 +331,6 @@ function GameRankingBody({
             if (!game) return null;
             const rank = i + 2;
             const borderColor = rank === 2 ? "#9ca3af" : "#b45309";
-            const badgeBg = rank === 2 ? "#9ca3af" : "#b45309";
-            const badgeTextColor = rank === 2 ? "#000" : "#fff";
             return (
               <Link
                 key={game.categoryId}
@@ -262,22 +351,33 @@ function GameRankingBody({
                   <div className="absolute inset-0 bg-muted" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
-                {/* <div
-                  className="absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
-                  style={{ background: badgeBg, color: badgeTextColor }}
-                >
-                  {rank}
-                </div> */}
+                {isScore && (
+                  <div className="absolute top-1.5 right-1.5">
+                    <ScoreBadge
+                      score={game.totalScore ?? 0}
+                      className="px-1.5 py-0.5"
+                      textClassName="text-xl"
+                    />
+                  </div>
+                )}
                 <div className="absolute bottom-2 left-2 right-2">
                   <p className="text-white/90 font-bold text-xs truncate">
                     {game.category}
                   </p>
-                  <p
-                    className="text-white text-2xl leading-tight"
-                    style={{ fontFamily: "var(--font-anton)" }}
-                  >
-                    {(game[valueKey] ?? 0).toLocaleString()}
-                  </p>
+                  {isScore ? (
+                    <TrendBar
+                      changeRate={game.changeRate}
+                      showLabel={false}
+                      className="mt-1"
+                    />
+                  ) : (
+                    <p
+                      className="text-white text-2xl leading-tight"
+                      style={{ fontFamily: "var(--font-anton)" }}
+                    >
+                      {(game[valueKey] ?? 0).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </Link>
             );
@@ -286,7 +386,7 @@ function GameRankingBody({
 
         {/* 4~9위 — 2열 콤팩트 카드 */}
         <div className="grid grid-cols-2 gap-2">
-          {rest.slice(0, 6).map((game, idx) => (
+          {rest.slice(0, 6).map((game) => (
             <Link
               key={game.categoryId}
               href={`/games/${encodeURIComponent(game.categoryId)}`}
@@ -304,19 +404,33 @@ function GameRankingBody({
                 <div className="absolute inset-0 bg-muted" />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
-              {/* <div className="absolute top-1.5 left-2 text-white/50 text-[10px] font-semibold">
-                {idx + 4}위
-              </div> */}
+              {isScore && (
+                <div className="absolute top-1 right-1">
+                  <ScoreBadge
+                    score={game.totalScore ?? 0}
+                    className="px-1.5 py-0.5"
+                    textClassName="text-xl"
+                  />
+                </div>
+              )}
               <div className="absolute bottom-2 left-2 right-2">
                 <p className="text-white/90 text-[10px] truncate font-semibold">
                   {game.category}
                 </p>
-                <p
-                  className="text-white text-xl leading-tight"
-                  style={{ fontFamily: "var(--font-anton)" }}
-                >
-                  {(game[valueKey] ?? 0).toLocaleString()}
-                </p>
+                {isScore ? (
+                  <TrendBar
+                    changeRate={game.changeRate}
+                    showLabel={false}
+                    className="mt-1"
+                  />
+                ) : (
+                  <p
+                    className="text-white text-xl leading-tight"
+                    style={{ fontFamily: "var(--font-anton)" }}
+                  >
+                    {(game[valueKey] ?? 0).toLocaleString()}
+                  </p>
+                )}
               </div>
             </Link>
           ))}
@@ -334,7 +448,6 @@ function GameRankingBody({
                 key={`podium-${game.categoryId}`}
                 game={game}
                 rank={rank}
-                showStreamer={showStreamer}
                 valueKey={valueKey}
               />
             );
@@ -363,39 +476,33 @@ function GameRankingBody({
               <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold text-white">
                 {idx + 4}
               </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span
-                  className="text-5xl lg:text-6xl text-gray-200 leading-none tracking-widest"
-                  style={{ fontFamily: "var(--font-anton)" }}
-                >
-                  {(game[valueKey] ?? 0).toLocaleString()}
-                </span>
-              </div>
+              {isScore ? (
+                <div className="absolute top-2 right-2">
+                  <ScoreBadge
+                    score={game.totalScore ?? 0}
+                    className="px-2 py-1"
+                    textClassName="text-4xl"
+                  />
+                </div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span
+                    className="text-5xl lg:text-6xl text-gray-200 leading-none tracking-widest"
+                    style={{ fontFamily: "var(--font-anton)" }}
+                  >
+                    {(game[valueKey] ?? 0).toLocaleString()}
+                  </span>
+                </div>
+              )}
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <p className="text-sm font-bold text-white/90 truncate mb-2">
                   {game.category}
                 </p>
-                {showStreamer && game.topStreamer && (
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full overflow-hidden relative border border-white/30 flex-shrink-0">
-                      {game.topStreamer.channelImageUrl ? (
-                        <Image
-                          src={game.topStreamer.channelImageUrl}
-                          alt={game.topStreamer.channelName}
-                          fill
-                          className="object-cover"
-                          sizes="32px"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-white">
-                          {game.topStreamer.channelName[0]}
-                        </div>
-                      )}
-                    </div>
-                    <span className="text-xs text-white/90 truncate">
-                      {game.topStreamer.channelName}
-                    </span>
-                  </div>
+                {isScore && (
+                  <TrendBar
+                    changeRate={game.changeRate}
+                    className="-mt-1 mb-2"
+                  />
                 )}
               </div>
             </Link>
@@ -425,19 +532,12 @@ function LiveSubtitle({ livePromise }: { livePromise: Promise<LiveData> }) {
   );
 }
 function LiveTabContent({ livePromise }: { livePromise: Promise<LiveData> }) {
-  const { byLive, collectedAt } = use(livePromise);
-  return (
-    <GameRankingBody
-      games={byLive}
-      showStreamer={false}
-      valueKey="totalViewers"
-    />
-  );
+  const { byLive } = use(livePromise);
+  return <GameRankingBody games={byLive} valueKey="totalViewers" />;
 }
 
-export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
-  const [active, setActive] = useState<"byLive" | "byMax" | "byPeak">("byMax");
-  const showStreamer = active === "byPeak";
+export function TrendingGame({ livePromise, byMax, byScore }: Props) {
+  const [active, setActive] = useState<"byLive" | "byMax" | "byScore">("byMax");
   const isLive = active === "byLive";
 
   return (
@@ -457,6 +557,27 @@ export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
             >
               <LiveSubtitle livePromise={livePromise} />
             </Suspense>
+          ) : active === "byScore" ? (
+            <>
+              <p className="text-xs md:text-sm text-white/40">
+                최근 7일간 데이터 기준
+              </p>
+              <div className="relative group">
+                <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 md:w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 text-left space-y-1.5">
+                  <p>
+                    · 시청자 (60%) — 최근 7일 평균 동시시청자 기준, 1위 게임은
+                    100점
+                  </p>
+                  <p>· 방송 수 (40%) — 최근 7일 총 방송 수 기준</p>
+                  <p>
+                    · 추세 감점 — 최근 3일 평균이 이전 4일 평균보다 크게
+                    하락하면 감점돼요
+                  </p>
+                  <p>· 상위 2,000개 방송 기준으로 집계됩니다</p>
+                </div>
+              </div>
+            </>
           ) : (
             <>
               <p className="text-xs md:text-sm text-white/40">
@@ -504,15 +625,8 @@ export function TrendingGame({ livePromise, byMax, byPeak }: Props) {
         </Suspense>
       ) : (
         <GameRankingBody
-          games={active === "byMax" ? byMax : active === "byPeak" ? byPeak : []}
-          showStreamer={showStreamer}
-          valueKey={
-            active === "byMax"
-              ? "maxViewers"
-              : active === "byPeak"
-                ? "peakViewers"
-                : "concurrentViewers"
-          }
+          games={active === "byMax" ? byMax : byScore}
+          valueKey={active === "byMax" ? "maxViewers" : "totalScore"}
         />
       )}
     </section>
