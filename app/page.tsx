@@ -14,6 +14,7 @@ import { getLives } from "@/lib/lives";
 import { Suspense } from "react";
 import { TrendingGame } from "@/components/main/TrendingGame";
 import { TrendingStreamer } from "@/components/main/TrendingStreamer";
+import { Notice } from "@/components/shared/Notice";
 
 export default function Home() {
   return (

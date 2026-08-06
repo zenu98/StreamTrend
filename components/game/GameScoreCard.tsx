@@ -33,39 +33,26 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
     (a, b) => b.broadcastCount - a.broadcastCount,
   );
 
-  const maxViewers =
-    sortedByViewers[1]?.concurrentViewers ??
-    sortedByViewers[0]?.concurrentViewers ??
-    1;
-  const maxBroadcast =
-    sortedByBroadcast[1]?.broadcastCount ??
-    sortedByBroadcast[0]?.broadcastCount ??
-    1;
+  // 이제 1등을 그대로 기준값으로 사용 (대회 시청자 왜곡이 없으니 2등 우회 불필요)
+  const maxViewers = sortedByViewers[0]?.concurrentViewers || 1;
+  const maxBroadcast = sortedByBroadcast[0]?.broadcastCount || 1;
 
   const currentGame = allGames.find((g) => g.categoryId === categoryId);
   const currentViewers = currentGame?.concurrentViewers ?? 0;
   const currentBroadcast = currentGame?.broadcastCount ?? 0;
-  const isFirst = sortedByViewers[0]?.categoryId === categoryId;
 
-  const viewerPercentile = isFirst
-    ? 100
-    : Math.min(
-        98,
-        Math.round((Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100),
-      );
-  const countPercentile = isFirst
-    ? 100
-    : Math.min(
-        98,
-        Math.round(
-          (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
-        ),
-      );
+  const viewerPercentile = Math.round(
+    (Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100,
+  );
+  const countPercentile = Math.round(
+    (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
+  );
 
-  // 추세 감점 없이, 시청자 0.6 + 방송수 0.4로만 계산
-  const totalScore = isFirst
-    ? 100
-    : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
+  // 최소 1점 보장 (방송 수/시청자 0인 경우 대비)
+  const totalScore = Math.max(
+    1,
+    Math.round(viewerPercentile * 0.6 + countPercentile * 0.4),
+  );
 
   // 추세는 점수에 영향 없이 표시 전용
   const recent3 = allRows.slice(-3);
@@ -112,13 +99,13 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
             <p className="font-semibold text-white/90 mb-1">점수 계산 기준</p>
             <p>
               · <span className="text-white/90">시청자 (60%)</span> — 최근 7일
-              평균 동시시청자의 제곱근을 전체 게임 최고치의 제곱근으로 나눠
-              0~98점으로 환산해요. 1위 게임은 100점이에요
+              평균 동시시청자의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠
+              0~100점으로 환산해요
             </p>
             <p>
               · <span className="text-white/90">방송 수 (40%)</span> — 최근 7일
-              방송 수의 제곱근을 전체 게임 최고치의 제곱근으로 나눠 0~98점으로
-              환산해요
+              방송 수의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠
+              0~100점으로 환산해요
             </p>
             <p>
               · <span className="text-white/90">추세</span>는 점수에 반영되지

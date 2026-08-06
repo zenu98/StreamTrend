@@ -409,35 +409,16 @@ export async function get7DaysAllGames() {
   const sortedByBroadcast = [...allGames].sort(
     (a, b) => b.broadcastCount - a.broadcastCount,
   );
-  const maxViewers =
-    sortedByViewers[1]?.concurrentViewers ??
-    sortedByViewers[0]?.concurrentViewers ??
-    1;
-  const maxBroadcast =
-    sortedByBroadcast[1]?.broadcastCount ??
-    sortedByBroadcast[0]?.broadcastCount ??
-    1;
-  const firstCategoryId = sortedByViewers[0]?.categoryId;
+  const maxViewers = sortedByViewers[0]?.concurrentViewers || 1;
+  const maxBroadcast = sortedByBroadcast[0]?.broadcastCount || 1;
 
   const withScore = allGames.map((g) => {
-    const isFirst = g.categoryId === firstCategoryId;
-
-    const viewerPercentile = isFirst
-      ? 100
-      : Math.min(
-          98,
-          Math.round(
-            (Math.sqrt(g.concurrentViewers) / Math.sqrt(maxViewers)) * 100,
-          ),
-        );
-    const countPercentile = isFirst
-      ? 100
-      : Math.min(
-          98,
-          Math.round(
-            (Math.sqrt(g.broadcastCount) / Math.sqrt(maxBroadcast)) * 100,
-          ),
-        );
+    const viewerPercentile = Math.round(
+      (Math.sqrt(g.concurrentViewers) / Math.sqrt(maxViewers)) * 100,
+    );
+    const countPercentile = Math.round(
+      (Math.sqrt(g.broadcastCount) / Math.sqrt(maxBroadcast)) * 100,
+    );
 
     const days = g.dailyViewers;
     const recent3 = days.slice(-3);
@@ -451,10 +432,10 @@ export async function get7DaysAllGames() {
     const avg = (recentAvg + prevAvg) / 2;
     const changeRate = avg > 0 ? diff / avg : 0;
 
-    const baseScore = isFirst
-      ? 100
-      : Math.round(viewerPercentile * 0.6 + countPercentile * 0.4);
-    const totalScore = isFirst ? 100 : baseScore; // 감점 없음
+    const totalScore = Math.max(
+      1,
+      Math.round(viewerPercentile * 0.6 + countPercentile * 0.4),
+    );
 
     return {
       categoryId: g.categoryId,

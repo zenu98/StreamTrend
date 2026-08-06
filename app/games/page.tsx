@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Info } from "lucide-react";
 import { Suspense } from "react";
 import { GameSearch } from "@/components/game/GameSearch";
+import { Notice } from "@/components/shared/Notice";
 
 export default function GamesPage() {
   return <GamesContent />;
@@ -14,17 +15,12 @@ async function GamesContent() {
 
   return (
     <main className=" mx-auto space-y-6 p-8">
-      <div className="w-full border border-white/10 rounded-lg p-4 bg-white/5 text-sm space-y-2">
-        <div className="font-semibold flex items-center text-white/50 gap-1">
-          <Info className="w-4 h-4" />
-          <div>수치 안내</div>
-        </div>
-        <p className="text-white/40">
-          동시시청자 순 상위 2,000개 방송 기준으로 5분마다 수집되므로, 하위
-          방송은 집계에서 제외됩니다. 이로 인해 시청자 수와 방송 수가 치지직
-          공식 수치와 오차가 있을 수 있습니다.
-        </p>
-      </div>
+      <Notice>
+        동시시청자 순 상위 2,000개 방송 기준으로 5분마다 수집되고, 하위 방송은
+        집계에서 제외됩니다. <br />
+        이로 인해 시청자 수와 방송 수가 치지직 공식 수치와 오차가 있을 수
+        있습니다.
+      </Notice>
       <h1 className="text-2xl font-bold my-6">게임 카테고리</h1>
 
       <GameSearch games={games} />
