@@ -230,7 +230,7 @@ export function StreamerTrendChart({ trendRows }: Props) {
                 <ChevronDown className="w-3 h-3 text-white/40" />
               </button>
             </DialogTrigger>
-            <DialogContent className="max-w-sm sm:max-w-lg lg:max-w-xl xl:max-w-3xl">
+            <DialogContent className=" sm:max-w-lg lg:max-w-xl xl:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>카테고리 선택</DialogTitle>
               </DialogHeader>
