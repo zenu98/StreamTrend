@@ -1,5 +1,13 @@
 "use client";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { DateRange } from "react-day-picker";
 import { differenceInCalendarDays } from "date-fns";
@@ -11,6 +19,8 @@ import { formatDuration, formatKoreanDate } from "@/lib/utils";
 
 type GameBreakdown = {
   category: string;
+  categoryId: string;
+  posterImageUrl: string | null;
   concurrentViewers: number;
   maxViewers: number;
   broadcastCount: number;
@@ -122,14 +132,15 @@ function StreamerTrendTooltip(props: any) {
 export function StreamerTrendChart({ trendRows }: Props) {
   const [activeRow, setActiveRow] = useState<TrendRow | null>(null);
   const [metric, setMetric] = useState<Metric>("concurrentViewers");
+  const [selectedGame, setSelectedGame] = useState<string>(""); // categoryId, "" = 전체
+  const [gamePickerOpen, setGamePickerOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     const to = new Date();
-    to.setDate(to.getDate() - 1); // 어제까지
+    to.setDate(to.getDate() - 1);
     const from = new Date();
-    from.setDate(from.getDate() - 7); // 7일 전부터
+    from.setDate(from.getDate() - 7);
     return { from, to };
   });
-
   const dayCount =
     dateRange?.from && dateRange?.to
       ? differenceInCalendarDays(dateRange.to, dateRange.from) + 1
@@ -159,16 +170,126 @@ export function StreamerTrendChart({ trendRows }: Props) {
   }, [trendRows, dateRange]);
 
   const metricLabel = metric === "maxViewers" ? "최고 시청자" : "평균 시청자";
+  const gameOptions = useMemo(() => {
+    const map = new Map<
+      string,
+      { categoryId: string; category: string; posterImageUrl: string | null }
+    >();
+    for (const row of filteredRows) {
+      for (const g of row.gameBreakdown ?? []) {
+        if (!map.has(g.categoryId)) {
+          map.set(g.categoryId, {
+            categoryId: g.categoryId,
+            category: g.category,
+            posterImageUrl: g.posterImageUrl,
+          });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [filteredRows]);
+  const selectedGameInfo = gameOptions.find(
+    (g) => g.categoryId === selectedGame,
+  );
 
+  const chartRows = useMemo(() => {
+    if (!selectedGame) return filteredRows;
+    return filteredRows
+      .filter((row) =>
+        row.gameBreakdown?.some((gb) => gb.categoryId === selectedGame),
+      )
+      .map((row) => {
+        const g = row.gameBreakdown!.find(
+          (gb) => gb.categoryId === selectedGame,
+        )!;
+        return {
+          ...row,
+          concurrentViewers: g.concurrentViewers,
+          maxViewers: g.maxViewers,
+        };
+      });
+  }, [filteredRows, selectedGame]);
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <UnderlineTabs
-          options={metricTabs}
-          active={metric}
-          onChange={setMetric}
-        />
+        <div className="flex flex-wrap items-center gap-3">
+          <UnderlineTabs
+            options={metricTabs}
+            active={metric}
+            onChange={setMetric}
+          />
 
+          <Dialog open={gamePickerOpen} onOpenChange={setGamePickerOpen}>
+            <DialogTrigger asChild>
+              <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs md:text-sm text-white/70 hover:border-white/20">
+                {selectedGameInfo ? (
+                  <>{selectedGameInfo.category}</>
+                ) : (
+                  "전체 게임"
+                )}
+                <ChevronDown className="w-3 h-3 text-white/40" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm sm:max-w-lg lg:max-w-xl xl:max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>카테고리 선택</DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[70vh] overflow-y-auto pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
+                <button
+                  onClick={() => {
+                    setSelectedGame("");
+                    setGamePickerOpen(false);
+                  }}
+                  className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
+                    !selectedGame ? "bg-white/10" : "hover:bg-white/5"
+                  }`}
+                >
+                  <div className="w-full aspect-3/4 rounded-lg bg-white/10 flex items-center justify-center text-lg font-bold text-white/60">
+                    전체
+                  </div>
+                  <span className="text-sm text-white/70 truncate w-full text-center">
+                    전체 게임
+                  </span>
+                </button>
+                {gameOptions.map((g) => (
+                  <button
+                    key={g.categoryId}
+                    onClick={() => {
+                      setSelectedGame(g.categoryId);
+                      setGamePickerOpen(false);
+                    }}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
+                      selectedGame === g.categoryId
+                        ? "bg-white/10"
+                        : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="w-full aspect-3/4 rounded-lg overflow-hidden bg-white/10">
+                      {g.posterImageUrl ? (
+                        <Image
+                          src={g.posterImageUrl}
+                          alt={g.category}
+                          width={80}
+                          height={80}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-white/60">
+                          {g.category[0]}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-sm text-white/70 truncate w-full text-center">
+                      {g.category}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* 기간 선택 박스 — 뱃지 + 프리셋 + 구분선 + DateRangePicker 다시 감쌈 */}
         <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1.5">
           <div className="flex items-center gap-1.5 px-2.5 py-1 text-sm font-semibold text-white">
             <CalendarDays className="h-4 w-4 shrink-0 text-white/40" />
@@ -213,18 +334,23 @@ export function StreamerTrendChart({ trendRows }: Props) {
       </div>
 
       <ChartLineDefault
-        title="시청자 추이"
+        title={
+          selectedGameInfo
+            ? `${selectedGameInfo.category} 시청자 추이`
+            : "시청자 추이"
+        }
         description={`${filteredRows[0]?.displayDate ?? ""} ~ ${filteredRows[filteredRows.length - 1]?.displayDate ?? ""}`}
-        data={filteredRows}
+        data={chartRows}
         dataKey={metric}
         xAxisKey="displayDate"
         label={metricLabel}
-        footerNote={`전체 게임 통합 · 최근 ${filteredRows.length}일 기준`}
+        footerNote={
+          selectedGameInfo
+            ? `${selectedGameInfo.category} · 최근 ${chartRows.length}일 기준`
+            : `전체 게임 통합 · 최근 ${filteredRows.length}일 기준`
+        }
         renderTooltip={
-          <StreamerTrendTooltip
-            metric={metric}
-            onActiveRow={setActiveRow} // ← 추가
-          />
+          <StreamerTrendTooltip metric={metric} onActiveRow={setActiveRow} />
         }
       />
 

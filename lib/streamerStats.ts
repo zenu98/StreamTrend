@@ -297,10 +297,12 @@ export async function getStreamerBasicInfo(channelId: string) {
 }
 export type StreamerTrendGameBreakdown = {
   category: string;
+  categoryId: string;
+  posterImageUrl: string | null;
   concurrentViewers: number;
+  maxViewers: number;
   broadcastCount: number;
   liveTitle: string;
-  maxViewers: number;
 };
 
 export type StreamerTrendRow = {
@@ -324,6 +326,16 @@ export async function getStreamerTrend(
     orderBy: { date: "asc" },
   });
 
+  // ← 추가: 카테고리 포스터 조회
+  const categoryIds = [...new Set(rows.map((r) => r.liveCategory))];
+  const categories = await prisma.category.findMany({
+    where: { categoryId: { in: categoryIds } },
+    select: { categoryId: true, posterImageUrl: true },
+  });
+  const posterMap = new Map(
+    categories.map((c) => [c.categoryId, c.posterImageUrl]),
+  );
+
   const map = new Map<
     string,
     {
@@ -334,6 +346,7 @@ export async function getStreamerTrend(
         string,
         {
           category: string;
+          categoryId: string; // ← 추가
           totalViewers: number;
           broadcastCount: number;
           maxViewers: number;
@@ -355,6 +368,7 @@ export async function getStreamerTrend(
 
     const prevGame = prev.games.get(r.liveCategory) ?? {
       category: r.liveCategoryValue,
+      categoryId: r.liveCategory, // ← 추가
       totalViewers: 0,
       broadcastCount: 0,
       maxViewers: 0,
@@ -362,6 +376,7 @@ export async function getStreamerTrend(
     };
     prev.games.set(r.liveCategory, {
       category: r.liveCategoryValue,
+      categoryId: r.liveCategory, // ← 추가
       totalViewers: prevGame.totalViewers + r.totalViewers,
       broadcastCount: prevGame.broadcastCount + r.broadcastCount,
       maxViewers: Math.max(prevGame.maxViewers, r.maxViewers),
@@ -390,6 +405,8 @@ export async function getStreamerTrend(
       gameBreakdown: Array.from(v.games.values())
         .map((g) => ({
           category: g.category,
+          categoryId: g.categoryId, // ← 추가
+          posterImageUrl: posterMap.get(g.categoryId) ?? null, // ← 추가
           concurrentViewers:
             g.broadcastCount > 0
               ? Math.round(g.totalViewers / g.broadcastCount)

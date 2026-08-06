@@ -81,7 +81,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
             <LineChart
               accessibilityLayer
               data={data}
-              margin={{ left: 12, right: 12 }}
+              margin={{ left: 14, right: 12 }}
             >
               <CartesianGrid vertical={false} />
               <XAxis
