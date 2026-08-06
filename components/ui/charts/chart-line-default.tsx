@@ -98,7 +98,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                tickMargin={8}
+                tickMargin={4}
                 width={40}
                 tickFormatter={(value) => value.toLocaleString()}
               />
