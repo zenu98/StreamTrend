@@ -103,11 +103,13 @@ async function GameDetail({
 
       <section className="flex-col space-y-4">
         {/* <h2 className="text-lg md:text-xl font-bold">현재</h2> */}
-        <GameScoreCard
-          categoryId={categoryId}
-          allRows={stats.allRows}
-          allGames={weeklyGames.allGames}
-        />
+        {!stats.isNonGame && (
+          <GameScoreCard
+            categoryId={categoryId}
+            allRows={stats.allRows}
+            allGames={weeklyGames.allGames}
+          />
+        )}
 
         <AllTimeRecordCard
           maxViewers={stats.maxViewers}

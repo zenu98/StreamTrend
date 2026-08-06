@@ -17,7 +17,12 @@ function getRankWithTies<T>(
   // target보다 "진짜로" 더 큰 값을 가진 항목의 개수 = 그게 곧 target의 순위(0-indexed)
   return items.filter((item) => getValue(item) > targetValue).length;
 }
-
+export const NON_GAME_CATEGORY_IDS = new Set([
+  "talk", // talk
+  "music",
+  "mukbang",
+  "animation",
+]);
 function countBetter<T>(
   items: T[],
   getValue: (item: T) => number,
@@ -194,7 +199,7 @@ function mergeRowsByKSTDate(
 export async function getGameStats(categoryId: string) {
   "use cache";
   cacheLife("statsTime");
-
+  const isNonGame = NON_GAME_CATEGORY_IDS.has(categoryId);
   const now = new Date();
   const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
   if (kstNow.getUTCHours() < 6) {
@@ -209,7 +214,7 @@ export async function getGameStats(categoryId: string) {
   const rows = await prisma.dailySummary.findMany({
     where: {
       liveCategory: categoryId,
-      categoryType: "GAME",
+      ...(isNonGame ? {} : { categoryType: "GAME" }),
       date: { gte: fromYear },
     },
     orderBy: { date: "asc" },
@@ -228,7 +233,10 @@ export async function getGameStats(categoryId: string) {
     rows.length > 0 ? Math.max(...rows.map((r) => r.peakViewers)) : 0;
 
   const allTimeTopStreamer = await prisma.streamerDailySummary.findFirst({
-    where: { liveCategory: categoryId },
+    where: {
+      liveCategory: categoryId,
+      ...(isNonGame ? {} : { categoryType: "GAME" }),
+    },
     orderBy: { maxViewers: "desc" },
     select: {
       channelId: true,
@@ -271,7 +279,11 @@ export async function getGameStats(categoryId: string) {
 
   filledRows.sort((a, b) => (a.date > b.date ? 1 : -1));
   const streamerRows = await prisma.streamerDailySummary.findMany({
-    where: { liveCategory: categoryId, date: { gte: fromYear } },
+    where: {
+      liveCategory: categoryId,
+      ...(isNonGame ? {} : { categoryType: "GAME" }),
+      date: { gte: fromYear },
+    },
     orderBy: { maxViewers: "desc" },
     select: {
       channelId: true,
@@ -307,6 +319,7 @@ export async function getGameStats(categoryId: string) {
   }
 
   return {
+    isNonGame,
     maxViewers,
     maxViewersDate,
     peakViewers,
