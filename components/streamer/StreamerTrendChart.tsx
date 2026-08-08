@@ -211,6 +211,13 @@ export function StreamerTrendChart({ trendRows }: Props) {
   }, [filteredRows, selectedGame]);
   return (
     <div className="space-y-3">
+      <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
+        <span
+          className="w-1 h-5 md:h-6 rounded-full"
+          style={{ background: "var(--chart-1)" }}
+        />
+        시청자 추이
+      </h2>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <UnderlineTabs
@@ -335,9 +342,7 @@ export function StreamerTrendChart({ trendRows }: Props) {
 
       <ChartLineDefault
         title={
-          selectedGameInfo
-            ? `${selectedGameInfo.category} 시청자 추이`
-            : "시청자 추이"
+          selectedGameInfo ? `${selectedGameInfo.category} ` : `전체 게임 `
         }
         description={`${filteredRows[0]?.displayDate ?? ""} ~ ${filteredRows[filteredRows.length - 1]?.displayDate ?? ""}`}
         data={chartRows}
