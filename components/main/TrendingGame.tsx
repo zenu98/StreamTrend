@@ -216,7 +216,7 @@ function PodiumItem({
               fill
               className="object-cover"
               sizes="(max-width: 768px) 128px, (max-width: 1024px) 224px, 288px"
-              priority
+              priority={isFirst}
             />
           ) : (
             <div className="w-full h-full bg-muted" />
@@ -290,7 +290,6 @@ function GameRankingBody({
                 fill
                 className="object-cover "
                 sizes="100vw"
-                priority
               />
             ) : (
               <div className="absolute inset-0 bg-muted" />
