@@ -26,7 +26,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://streamtrend.xyz";
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "StreamTrend (스트림트렌드) | 치지직 게임·스트리머 통계",
+    default: "스트림트렌드 | 치지직 게임·스트리머 통계",
     template: "%s | 스트림트렌드",
   },
   description:
