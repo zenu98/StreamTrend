@@ -618,8 +618,8 @@ export function TrendingGame({ livePromise, byMax, byScore }: Props) {
       <Notice className="mx-auto">
         2026년 8월 6일부터 집계하는 LCK, EWC 등 대회 중계 관련 같이보기 방송은
         게임 랭킹·스트리머 랭킹 집계에서 제외됩니다. <br />
-        실제 게임을 플레이하는 스트리머의 시청자만 랭킹과 통계에 반영되며,
-        같이보기 시청자는 해당 스트리머의 개인 기록에는 그대로 남게됩니다.
+        실제 게임을 플레이하는 스트리머의 시청자만 게임 랭킹과 통계에 반영되며,
+        같이보기 시청자는 해당 스트리머의 개인 기록에만 남게됩니다.
       </Notice>
       {isLive ? (
         <Suspense
