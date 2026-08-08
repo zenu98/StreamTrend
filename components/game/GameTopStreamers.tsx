@@ -141,7 +141,13 @@ export function GameTopStreamers({
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <h2 className="text-lg md:text-xl font-bold">스트리머 기록</h2>
+        <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
+          <span
+            className="w-1 h-5 md:h-6 rounded-full"
+            style={{ background: "var(--chart-1)" }}
+          />
+          스트리머 기록
+        </h2>
         <div className="relative group">
           <Info className="w-4 h-4 text-muted-foreground cursor-help" />
           <div className="absolute left-0 top-full mt-2 w-64 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-1">

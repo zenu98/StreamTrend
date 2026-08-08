@@ -154,6 +154,13 @@ async function GameDetail({
       </section>
 
       <section className="space-y-4 ">
+        <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
+          <span
+            className="w-1 h-5 md:h-6 rounded-full"
+            style={{ background: "var(--chart-1)" }}
+          />
+          시청자 통계
+        </h2>
         <GameChartTabs
           allRows={stats.allRows}
           defaultGame={categoryInfo?.categoryValue ?? ""}

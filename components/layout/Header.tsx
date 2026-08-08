@@ -1,17 +1,25 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export function Header() {
   return (
     <header className="border-b px-4 md:px-8 h-14 flex items-center justify-between">
-      <Link href="/" className="font-bold text-lg">
-        스트림트렌드 Beta
+      <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+        <Image
+          src="/logo_square_accent.png"
+          alt="StreamTrend"
+          width={28}
+          height={28}
+          className="rounded-md"
+        />
+        StreamTrend
       </Link>
       <nav className="flex items-center gap-6">
         <Link
           href="/games"
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          게임
+          카테고리
         </Link>
         <Link
           href="/streamers"

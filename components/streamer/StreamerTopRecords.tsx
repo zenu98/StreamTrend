@@ -51,7 +51,13 @@ export function StreamerTopRecords({ topRecords, topGames }: Props) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg md:text-xl font-bold">역대 최고 시청자 기록</h2>
+      <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
+        <span
+          className="w-1 h-5 md:h-6 rounded-full"
+          style={{ background: "var(--chart-1)" }}
+        />
+        시청자 기록
+      </h2>
 
       <UnderlineTabs
         options={tabs}

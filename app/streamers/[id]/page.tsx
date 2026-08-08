@@ -14,6 +14,7 @@ import { StreamerTrendChart } from "@/components/streamer/StreamerTrendChart";
 import { StreamerCurrentStats } from "@/components/streamer/StreamerCurrentStats";
 import { StreamerMainGame } from "@/components/streamer/StreamerMainGame";
 import { BroadcastCalendar } from "@/components/streamer/BroadcastCalendar";
+import { StreamerGameCalendar } from "@/components/streamer/StreamerGameCalendar";
 
 export async function generateMetadata({
   params,
@@ -94,6 +95,7 @@ async function StreamerDetail({
           }))}
         />
       </section>
+
       <section className="space-y-4">
         <StreamerMainGame rows={allRows} />
       </section>
@@ -101,11 +103,10 @@ async function StreamerDetail({
         <StreamerTrendChart trendRows={trendRows} />
       </section>
       <section className="space-y-4">
-        <BroadcastCalendar trendRows={trendRows} />
+        <BroadcastCalendar trendRows={trendRows} gameRows={allRows} />
       </section>
       {/* 통계 (실시간 기본 선택) */}
       <section className="space-y-4">
-        <h2 className="text-lg md:text-xl font-bold">통계</h2>
         <StreamerDateFilter rows={allRows} />
       </section>
 

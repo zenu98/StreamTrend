@@ -198,6 +198,14 @@ export function StreamerDateFilter({ rows }: Props) {
 
   return (
     <div className="space-y-4">
+      <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
+        <span
+          className="w-1 h-5 md:h-6 rounded-full"
+          style={{ background: "var(--chart-1)" }}
+        />
+        게임별 시청자
+      </h2>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <UnderlineTabs
           options={metricTabs}
@@ -251,7 +259,6 @@ export function StreamerDateFilter({ rows }: Props) {
           />
         </div>
       </div>
-
       {gameMap.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
