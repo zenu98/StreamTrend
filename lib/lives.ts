@@ -19,7 +19,6 @@ export function isSportsBroadcast(s: { channelId: string; liveTitle: string }) {
 export async function getLives() {
   "use cache";
   cacheLife("statsTime");
-  console.log("getLives 실행됨");
 
   // 최신 collectedAt 배치 조회
   const latest = await prisma.liveSnapshot.findFirst({

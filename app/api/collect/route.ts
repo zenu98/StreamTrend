@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     const json = await res.json();
     const lives = json.content?.data ?? [];
     next = json.content?.page?.next ?? null;
-    if (i === 0) console.log("live keys:", Object.keys(lives[0]));
+    // if (i === 0) console.log("live keys:", Object.keys(lives[0]));
 
     allLives.push(...lives);
 
@@ -126,16 +126,16 @@ export async function GET(request: Request) {
         },
       );
       const json = await res.json();
-      console.log("검색쿼리:", game.liveCategory);
-      console.log(
-        "검색결과:",
-        json.content?.data?.map((c: any) => c.categoryId),
-      );
+      // console.log("검색쿼리:", game.liveCategory);
+      // console.log(
+      //   "검색결과:",
+      //   json.content?.data?.map((c: any) => c.categoryId),
+      // );
       const category = json.content?.data?.find(
         (c: any) => c.categoryId === game.liveCategory,
       );
 
-      console.log("매칭:", category ? "성공" : "실패");
+      // console.log("매칭:", category ? "성공" : "실패");
       if (!category) return;
 
       await prisma.category.upsert({

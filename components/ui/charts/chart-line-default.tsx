@@ -61,7 +61,7 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
   const changePct =
     hasTrend && first! > 0 ? Math.round(((last! - first!) / first!) * 100) : 0;
   const isUp = changePct >= 0;
-  console.log("trendRows length:", data.length, data);
+  // console.log("trendRows length:", data.length, data);
   return (
     <Card>
       <CardHeader>

@@ -46,11 +46,7 @@ function CustomTooltip({
   if (!active || !payload?.length || !label) return null;
   const value = payload[0]?.value as number;
   const streamers = topStreamersByDate?.[label] ?? [];
-  console.log(
-    "topStreamersByDate keys:",
-    Object.keys(topStreamersByDate ?? {}),
-  );
-  console.log("chart label:", label); // CustomTooltip 안에
+
   return (
     <div className="rounded-lg border border-white/10 bg-black/80 backdrop-blur-sm px-3 py-2 text-xs space-y-1.5">
       <p className="text-white/50">{label}</p>
