@@ -42,13 +42,13 @@ async function HomeContent() {
   return (
     <div className="space-y-32 max-w-6xl 2xl:max-w-7xl  mx-auto">
       <TrendingGame
-        livePromise={getLiveGamesData()}
+        livePromise={livePromise}
         byMax={topGames.byMax}
         byScore={weeklyGames.byScore}
       />
       <TrendingStreamer
         streamers={topStreamers}
-        liveStreamerPromise={getLiveStreamers()}
+        liveStreamerPromise={liveStreamerPromise}
       />
     </div>
   );
