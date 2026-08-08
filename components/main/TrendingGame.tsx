@@ -289,7 +289,8 @@ function GameRankingBody({
                 alt={top3[0].category}
                 fill
                 className="object-cover "
-                sizes="100vw"
+                sizes="(max-width: 768px) calc(100vw - 32px), 0px"
+                priority
               />
             ) : (
               <div className="absolute inset-0 bg-muted" />

@@ -27,8 +27,13 @@ function avgViewers(s: Streamer) {
     ? Math.round(s.totalViewers / s.broadcastCount)
     : 0;
 }
-
-function BlurBg({ url }: { url: string | null }) {
+function BlurBg({
+  url,
+  sizes = "100vw",
+}: {
+  url: string | null;
+  sizes?: string;
+}) {
   if (!url) return <div className="absolute inset-0 bg-white/10" />;
   return (
     <Image
@@ -36,7 +41,7 @@ function BlurBg({ url }: { url: string | null }) {
       alt=""
       fill
       className="object-cover"
-      sizes="100vw"
+      sizes={sizes}
       style={{ filter: "blur(1px) brightness(0.35)" }}
     />
   );
@@ -86,6 +91,7 @@ function StreamerCard({
   viewerClassName,
   nameClassName,
   subClassName,
+  sizes,
 }: {
   streamer: Streamer;
   viewers: number;
@@ -95,6 +101,7 @@ function StreamerCard({
   viewerClassName?: string;
   nameClassName?: string;
   subClassName?: string;
+  sizes?: string;
 }) {
   return (
     <Link
@@ -102,7 +109,7 @@ function StreamerCard({
       className={`relative overflow-hidden ${className}`}
       style={borderColor ? { borderColor } : undefined}
     >
-      <BlurBg url={streamer.channelImageUrl} />
+      <BlurBg url={streamer.channelImageUrl} sizes={sizes} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       <div className="absolute inset-0 flex items-center gap-3 px-3">
         <ProfileCircle
@@ -163,6 +170,7 @@ function StreamerList({
           nameClassName="md:text-2xl"
           subClassName="text-xs md:text-sm"
           viewerClassName="text-3xl md:text-6xl"
+          sizes="(max-width: 768px) calc(100vw - 32px), 1152px"
         />
       )}
 
@@ -182,6 +190,7 @@ function StreamerList({
               nameClassName="md:text-xl"
               subClassName="text-xs md:text-sm"
               viewerClassName="text-3xl md:text-5xl"
+              sizes="(max-width: 768px) calc(50vw - 24px), 576px"
             />
           );
         })}
@@ -198,6 +207,7 @@ function StreamerList({
             nameClassName="md:text-lg"
             subClassName="text-xs"
             viewerClassName="text-2xl md:text-4xl"
+            sizes="(max-width: 768px) calc(50vw - 24px), 576px"
           />
         ))}
       </div>
