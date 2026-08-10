@@ -1,15 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
-import { toKSTDateString } from "./utils";
+import { getKSTBusinessDate, toKSTDateString } from "./utils";
 function getKSTBusinessDayStart(now: Date): Date {
-  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const boundary = new Date(kstNow);
+  const boundary = getKSTBusinessDate(now);
   boundary.setUTCHours(6, 0, 0, 0);
-  // 06:00 이전이면 아직 전날 영업일이 진행 중
-  if (kstNow.getUTCHours() < 6) {
-    boundary.setUTCDate(boundary.getUTCDate() - 1);
-  }
   return new Date(boundary.getTime() - 9 * 60 * 60 * 1000);
+}
+
+function getKSTBusinessDayDateBoundary(now: Date): Date {
+  const kstNow = getKSTBusinessDate(now);
+  kstNow.setUTCHours(0, 0, 0, 0);
+  return new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
 }
 
 export async function getStreamerStats(channelId: string) {
@@ -63,14 +64,13 @@ export async function getStreamerStats(channelId: string) {
       categoryId: d.liveCategory,
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
-  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  kstNow.setUTCHours(0, 0, 0, 0);
-  const todayKSTasUTC = new Date(kstNow.getTime() - 9 * 60 * 60 * 1000);
 
-  const from7 = new Date(todayKSTasUTC);
+  const todayDateBoundary = getKSTBusinessDayDateBoundary(now);
+
+  const from7 = new Date(todayDateBoundary);
   from7.setUTCDate(from7.getUTCDate() - 7);
 
-  const from30 = new Date(todayKSTasUTC);
+  const from30 = new Date(todayDateBoundary);
   from30.setUTCDate(from30.getUTCDate() - 30);
 
   const [rows7, rows30, channelInfo] = await Promise.all([

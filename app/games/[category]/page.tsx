@@ -179,6 +179,7 @@ async function GameDetail({
           topRecords={topStreamers.topRecords}
           topChannels={topStreamers.topChannels}
           categoryId={categoryId}
+          defaultDisplayLimit={topStreamers.defaultDisplayLimit}
         />
       </section>
     </main>

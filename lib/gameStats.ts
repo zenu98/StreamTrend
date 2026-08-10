@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
-import { getLives } from "./lives";
+import { BROADCAST_CHANNEL_IDS, getLives } from "./lives";
 import { toKSTDateString } from "./utils";
 
 export async function getGameCategoryInfo(categoryId: string) {
@@ -335,6 +335,7 @@ export type TopStreamerEntry = {
   maxViewers: number;
   liveTitle: string;
   date: string;
+  isTournament: boolean;
 };
 
 function toKSTFullDateString(date: Date): string {
@@ -347,10 +348,15 @@ export async function getGameTopStreamers(categoryId: string) {
   "use cache";
   cacheLife("statsTime");
 
+  // 대회(LCK/EWC 등) 채널을 기본 목록에서 제외하고도 화면에 10개를 채울 수 있도록
+  // 넉넉하게(50개) 가져온 뒤, 프론트에서 "대회 포함" 토글로 필터링한다.
+  const RAW_LIMIT = 50;
+  const DEFAULT_DISPLAY_LIMIT = 10;
+
   const topRecordsRaw = await prisma.streamerDailySummary.findMany({
     where: { liveCategory: categoryId },
     orderBy: { maxViewers: "desc" },
-    take: 10,
+    take: RAW_LIMIT,
     select: {
       channelId: true,
       channelName: true,
@@ -361,7 +367,7 @@ export async function getGameTopStreamers(categoryId: string) {
     },
   });
 
-  // 채널별 최고 기록만 남긴 뒤 상위 10개 (DISTINCT ON은 Postgres 전용)
+  // 채널별 최고 기록만 남긴 뒤 상위 N개 (DISTINCT ON은 Postgres 전용)
   const topChannelsRaw = await prisma.$queryRaw<
     {
       channelId: string;
@@ -380,7 +386,7 @@ export async function getGameTopStreamers(categoryId: string) {
       ORDER BY "channelId", "maxViewers" DESC
     ) t
     ORDER BY "maxViewers" DESC
-    LIMIT 10
+    LIMIT ${RAW_LIMIT}
   `;
 
   const toEntry = (r: {
@@ -397,10 +403,14 @@ export async function getGameTopStreamers(categoryId: string) {
     maxViewers: r.maxViewers,
     liveTitle: r.liveTitle,
     date: toKSTFullDateString(r.date),
+    isTournament: BROADCAST_CHANNEL_IDS.has(r.channelId),
   });
 
+  // 원래 순위(maxViewers desc)는 그대로 유지한 채 isTournament만 태깅해서 넘긴다.
+  // "대회 포함" 체크박스 on/off에 따른 필터링 + 상위 N개 자르기는 클라이언트에서 처리.
   return {
     topRecords: topRecordsRaw.map(toEntry),
     topChannels: topChannelsRaw.map(toEntry),
+    defaultDisplayLimit: DEFAULT_DISPLAY_LIMIT,
   };
 }

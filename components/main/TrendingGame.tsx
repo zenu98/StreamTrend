@@ -348,7 +348,6 @@ function GameRankingBody({
                     fill
                     className="object-cover"
                     sizes="50vw"
-                    priority
                   />
                 ) : (
                   <div className="absolute inset-0 bg-muted" />

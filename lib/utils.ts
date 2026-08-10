@@ -33,14 +33,14 @@ export function toKSTDateFullString(date: Date): string {
 }
 
 // 00:00 ~ 06:00시에도 날짜가 넘어가지 않도록 하는 함수
-export function getTodayLabel(): string {
-  const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-  const kstHour = kstNow.getUTCHours();
-
-  // 06:00 이전이면 어제 날짜
-  if (kstHour < 6) {
+export function getKSTBusinessDate(now: Date = new Date()): Date {
+  const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  if (kstNow.getUTCHours() < 6) {
     kstNow.setUTCDate(kstNow.getUTCDate() - 1);
   }
+  return kstNow;
+}
 
-  return kstNow.toISOString().slice(5, 10);
+export function getTodayLabel(): string {
+  return getKSTBusinessDate().toISOString().slice(5, 10);
 }

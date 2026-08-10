@@ -15,6 +15,7 @@ type Props = {
   topRecords: TopStreamerEntry[];
   topChannels: TopStreamerEntry[];
   categoryId: string;
+  defaultDisplayLimit?: number;
 };
 
 type BroadcastEntry = {
@@ -63,14 +64,17 @@ export function GameTopStreamers({
   topRecords,
   topChannels,
   categoryId,
+  defaultDisplayLimit = 10,
 }: Props) {
   const [active, setActive] = useState<"records" | "channels" | "broadcast">(
     "channels",
   );
+  const [includeTournaments, setIncludeTournaments] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
+
   const [dayCount, setDayCount] = useState<number | null>(7);
   const [broadcastData, setBroadcastData] = useState<BroadcastEntry[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -79,7 +83,24 @@ export function GameTopStreamers({
   const [isLoadingMore, startLoadingMore] = useTransition();
   const deferredData = useDeferredValue<BroadcastEntry[]>(broadcastData);
   const isStale = broadcastData !== deferredData;
-  const list = active === "records" ? topRecords : topChannels;
+  const rawList = active === "records" ? topRecords : topChannels;
+  const filteredList = includeTournaments
+    ? rawList
+    : rawList.filter((e) => !e.isTournament);
+  // 이미 서버에서 넉넉히(최대 50개) 받아온 목록을 화면에는 조금씩만 보여준다.
+  // "더 보기"를 누르면 이미 받아온 데이터 안에서 displayCount만 늘려서 추가로 노출한다.
+  const [displayCount, setDisplayCount] = useState(defaultDisplayLimit);
+  // 탭 전환이나 대회 포함 여부가 바뀌면 다시 처음(10개)부터 보여준다.
+  // useEffect로 리셋하면 렌더가 한 번 더 도니, 렌더링 중에 바로 조정한다.
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  const listKey = `${active}-${includeTournaments}`;
+  const [prevListKey, setPrevListKey] = useState(listKey);
+  if (listKey !== prevListKey) {
+    setPrevListKey(listKey);
+    setDisplayCount(defaultDisplayLimit);
+  }
+  const list = filteredList.slice(0, displayCount);
+  const hasMoreTop = filteredList.length > displayCount;
 
   async function fetchBroadcast(
     from: string,
@@ -177,6 +198,17 @@ export function GameTopStreamers({
             ]}
           />
         )}
+        {(active === "records" || active === "channels") && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeTournaments}
+              onChange={(e) => setIncludeTournaments(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border accent-primary"
+            />
+            공식 대회 채널 포함
+          </label>
+        )}
       </div>
 
       {active === "broadcast" ? (
@@ -253,39 +285,52 @@ export function GameTopStreamers({
       ) : list.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
       ) : (
-        <div className="divide-y rounded-lg border bg-card">
-          {list.map((entry, i) => (
-            <Link
-              key={`${entry.channelId}-${i}`}
-              href={`/streamers/${entry.channelId}`}
-              className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+        <div className="space-y-3">
+          <div className="divide-y rounded-lg border bg-card">
+            {list.map((entry, i) => (
+              <Link
+                key={`${entry.channelId}-${i}`}
+                href={`/streamers/${entry.channelId}`}
+                className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+              >
+                <RankBadge rank={i + 1} />
+                {entry.channelImageUrl && (
+                  <Image
+                    src={entry.channelImageUrl}
+                    alt={entry.channelName}
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {entry.channelName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {entry.liveTitle}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-bold">
+                    {entry.maxViewers.toLocaleString()}명
+                  </p>
+                  <p className="text-xs text-muted-foreground">{entry.date}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {hasMoreTop && (
+            <button
+              onClick={() =>
+                setDisplayCount((prev) => prev + defaultDisplayLimit)
+              }
+              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors"
             >
-              <RankBadge rank={i + 1} />
-              {entry.channelImageUrl && (
-                <Image
-                  src={entry.channelImageUrl}
-                  alt={entry.channelName}
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 shrink-0 rounded-full object-cover"
-                />
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">
-                  {entry.channelName}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {entry.liveTitle}
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-sm font-bold">
-                  {entry.maxViewers.toLocaleString()}명
-                </p>
-                <p className="text-xs text-muted-foreground">{entry.date}</p>
-              </div>
-            </Link>
-          ))}
+              더 보기
+            </button>
+          )}
         </div>
       )}
     </div>
