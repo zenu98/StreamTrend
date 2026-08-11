@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
-import { BROADCAST_CHANNEL_IDS, getLives } from "./lives";
+import { getLives } from "./lives";
 import { toKSTDateString } from "./utils";
-
+import { BROADCAST_CHANNEL_IDS } from "./data/channel";
 export async function getGameCategoryInfo(categoryId: string) {
   "use cache";
   cacheLife("statsTime");

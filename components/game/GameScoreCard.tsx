@@ -1,13 +1,10 @@
 import { Info } from "lucide-react";
 import { ChartRadialText } from "../ui/charts/chart-radial-text";
-
-function ScoreRingColor(score: number) {
-  if (score >= 80) return "#00ce7a";
-  if (score >= 60) return "#23ba7e";
-  if (score >= 40) return "#60a5fa";
-  if (score >= 20) return "#f59e0b";
-  return "#e24b4a";
-}
+import {
+  getScoreRingColor,
+  getTrendSegments,
+  TREND_COLORS,
+} from "@/lib/colors";
 
 type Props = {
   categoryId: string;
@@ -18,12 +15,6 @@ type Props = {
     broadcastCount: number;
   }[];
 };
-
-function getGradientColors(score: number): [string, string] {
-  if (score >= 70) return ["#1bb373", "#00e5a0"];
-  if (score >= 40) return ["#f59e0b", "#1bb373"];
-  return ["#e24b4a", "#f59e0b"];
-}
 
 export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const sortedByViewers = [...allGames].sort(
@@ -67,25 +58,16 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
   const avg = (recentAvg + prevAvg) / 2;
   const changeRate = avg > 0 ? diff / avg : 0;
 
-  let trendLabel: string;
-  if (changeRate <= -0.3) {
-    trendLabel = "하락세";
-  } else if (changeRate >= 0.3) {
-    trendLabel = "상승세";
-  } else {
-    trendLabel = "유지";
-  }
+  const { label: trendLabel, activeIndex: trendActiveIndex } =
+    getTrendSegments(changeRate);
 
-  const segments = [
-    { color: "#e24b4a", active: trendLabel === "하락세" },
-    { color: "#f59e0b", active: trendLabel === "유지" },
-    { color: "#00ce7a", active: trendLabel === "상승세" },
-  ];
+  const segments = TREND_COLORS.map((color, i) => ({
+    color,
+    active: i === trendActiveIndex,
+  }));
 
-  const color = ScoreRingColor(totalScore);
-  const viewerColor = ScoreRingColor(viewerPercentile);
-  const countColor = ScoreRingColor(countPercentile);
-  const [gradStart, gradEnd] = getGradientColors(totalScore);
+  const viewerColor = getScoreRingColor(viewerPercentile);
+  const countColor = getScoreRingColor(countPercentile);
 
   return (
     <div className="rounded-2xl border bg-card px-5 py-5 space-y-4 sm:min-w-[45%] sm:w-fit">

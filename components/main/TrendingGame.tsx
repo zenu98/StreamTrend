@@ -3,23 +3,18 @@
 import { Suspense, use, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Info } from "lucide-react";
 import { Notice } from "../shared/Notice";
-
-type Streamer = {
-  channelId: string;
-  channelName: string;
-  channelImageUrl: string | null;
-  maxViewers: number;
-};
+import {
+  getScoreGradientColors,
+  getTrendSegments,
+  TREND_COLORS,
+} from "@/lib/colors";
 
 type Game = {
   category: string;
   categoryId: string;
-  concurrentViewers: number;
   maxViewers?: number;
-  peakViewers?: number;
   totalViewers?: number;
   posterImageUrl: string | null;
 
@@ -38,11 +33,7 @@ type Props = {
   byScore: Game[];
 };
 
-type ValueKey =
-  | "concurrentViewers"
-  | "maxViewers"
-  | "totalScore"
-  | "totalViewers";
+type ValueKey = "maxViewers" | "totalScore" | "totalViewers";
 
 const tabs = [
   { label: "실시간 시청자", key: "byLive" as const },
@@ -50,15 +41,9 @@ const tabs = [
   { label: "인기 점수", key: "byScore" as const },
 ];
 
-function getGradientColors(score: number): [string, string] {
-  if (score >= 70) return ["#f59e0b", "#1bb373"];
-  if (score >= 40) return ["#e24b4a", "#f59e0b"];
-  return ["#e24b4a", "#f97316"];
-}
-
 // score 숫자 텍스트에 그라데이션(색상)만 입히고 싶을 때 쓰는 style
 function scoreTextGradientStyle(score: number): CSSProperties {
-  const [start, end] = getGradientColors(score);
+  const [start, end] = getScoreGradientColors(score);
   return {
     backgroundImage: `linear-gradient(135deg, ${start}, ${end})`,
     WebkitBackgroundClip: "text",
@@ -77,9 +62,8 @@ function ScoreBadge({
   className?: string;
   textClassName?: string;
 }) {
-  const [start, end] = getGradientColors(score);
   return (
-    <div className="inline-flex ">
+    <div className="inline-flex">
       <div
         className={`inline-flex rounded-sm sm:rounded-lg bg-black/70 backdrop-blur-sm ${className}`}
       >
@@ -94,34 +78,13 @@ function ScoreBadge({
   );
 }
 
-function getTrendSegments(changeRate?: number) {
-  const rate = changeRate ?? 0;
-  const colors = ["#e24b4a", "#f59e0b", "#00ce7a"] as const;
+const JUSTIFY_BY_INDEX = [
+  "justify-start",
+  "justify-center",
+  "justify-end",
+] as const;
 
-  const justifyByIndex = [
-    "justify-start",
-    "justify-center",
-    "justify-end",
-  ] as const;
-
-  if (rate <= -0.3)
-    return {
-      label: "하락세",
-      activeIndex: 0,
-      colors,
-      justify: justifyByIndex[0],
-    };
-  if (rate >= 0.3)
-    return {
-      label: "상승세",
-      activeIndex: 2,
-      colors,
-      justify: justifyByIndex[2],
-    };
-  return { label: "유지", activeIndex: 1, colors, justify: justifyByIndex[1] };
-}
-
-// GameScoreCard와 동일한 3구간 추세 표시 (급락/하락세/지속)
+// GameScoreCard와 동일한 3구간 추세 표시 (하락세/유지/상승세)
 function TrendBar({
   changeRate,
   showLabel = true,
@@ -131,7 +94,8 @@ function TrendBar({
   showLabel?: boolean;
   className?: string;
 }) {
-  const { label, activeIndex, colors, justify } = getTrendSegments(changeRate);
+  const { label, activeIndex } = getTrendSegments(changeRate);
+  const justify = JUSTIFY_BY_INDEX[activeIndex];
   return (
     <div className={className}>
       {showLabel && (
@@ -140,7 +104,7 @@ function TrendBar({
         </div>
       )}
       <div className="flex gap-1">
-        {colors.map((color, i) => (
+        {TREND_COLORS.map((color, i) => (
           <div
             key={i}
             className="flex-1 h-1 rounded-full"
@@ -163,25 +127,62 @@ function formatCollectedAt(collectedAt: string) {
   });
 }
 
+// 탭 서브타이틀 옆에 붙는 (i) 아이콘 + 호버 안내 박스. 3개 탭에서 내용만 다르게 반복 사용.
+function InfoTooltip({ lines }: { lines: string[] }) {
+  return (
+    <div className="relative group">
+      <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
+      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 md:w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 text-left space-y-1.5">
+        {lines.map((line, i) => (
+          <p key={i}>· {line}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 포디움 순위별 스타일
+const RANK_STYLES: Record<
+  1 | 2 | 3,
+  { border: string; badgeBg: string; badgeBorder: string; badgeColor: string }
+> = {
+  1: {
+    border: "#f59e0b",
+    badgeBg: "#fef3c7",
+    badgeBorder: "#f59e0b",
+    badgeColor: "#92400e",
+  },
+  2: {
+    border: "#9ca3af",
+    badgeBg: "#f3f4f6",
+    badgeBorder: "#9ca3af",
+    badgeColor: "#374151",
+  },
+  3: {
+    border: "#b45309",
+    badgeBg: "#fef3c7",
+    badgeBorder: "#b45309",
+    badgeColor: "#78350f",
+  },
+};
+
 function PodiumItem({
   game,
   rank,
   valueKey,
 }: {
   game: Game;
-  rank: number;
+  rank: 1 | 2 | 3;
   valueKey: ValueKey;
 }) {
-  const router = useRouter();
   const isFirst = rank === 1;
   const isScore = valueKey === "totalScore";
-  const borderColor =
-    rank === 1 ? "#f59e0b" : rank === 2 ? "#9ca3af" : "#b45309";
-  const badgeBg = rank === 1 ? "#fef3c7" : rank === 2 ? "#f3f4f6" : "#fef3c7";
-  const badgeBorder =
-    rank === 1 ? "#f59e0b" : rank === 2 ? "#9ca3af" : "#b45309";
-  const badgeColor =
-    rank === 1 ? "#92400e" : rank === 2 ? "#374151" : "#78350f";
+  const {
+    border: borderColor,
+    badgeBg,
+    badgeBorder,
+    badgeColor,
+  } = RANK_STYLES[rank];
   const imgWidth = isFirst ? "w-32 md:w-56 lg:w-72" : "w-24 md:w-48 lg:w-64";
   const value = (game[valueKey] ?? 0) as number;
 
@@ -199,11 +200,9 @@ function PodiumItem({
       >
         {rank}
       </div>
-      <div
-        onClick={() =>
-          router.push(`/games/${encodeURIComponent(game.categoryId)}`)
-        }
-        className="cursor-pointer"
+      <Link
+        href={`/games/${encodeURIComponent(game.categoryId)}`}
+        className="block"
       >
         <div
           className={`${imgWidth} aspect-[3/4] rounded-xl overflow-hidden relative flex-shrink-0`}
@@ -249,10 +248,15 @@ function PodiumItem({
             )}
           </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 }
+
+// 포디움 3개 + 나머지 목록 9개(데스크톱 전부, 모바일은 이 중 앞 6개만 노출)
+const PODIUM_COUNT = 3;
+const REST_COUNT = 9;
+const MOBILE_REST_COUNT = 6;
 
 function GameRankingBody({
   games,
@@ -262,8 +266,8 @@ function GameRankingBody({
   valueKey: ValueKey;
 }) {
   const isScore = valueKey === "totalScore";
-  const top3 = games.slice(0, 3);
-  const rest = games.slice(3, 12);
+  const top3 = games.slice(0, PODIUM_COUNT);
+  const rest = games.slice(PODIUM_COUNT, PODIUM_COUNT + REST_COUNT);
   const podiumOrder = [top3[1], top3[0], top3[2]];
 
   if (games.length === 0) {
@@ -388,7 +392,7 @@ function GameRankingBody({
 
         {/* 4~9위 — 2열 콤팩트 카드 */}
         <div className="grid grid-cols-2 gap-2">
-          {rest.slice(0, 6).map((game) => (
+          {rest.slice(0, MOBILE_REST_COUNT).map((game) => (
             <Link
               key={game.categoryId}
               href={`/games/${encodeURIComponent(game.categoryId)}`}
@@ -444,7 +448,7 @@ function GameRankingBody({
         <div className="flex justify-center items-start gap-8">
           {podiumOrder.map((game, idx) => {
             if (!game) return null;
-            const rank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+            const rank: 1 | 2 | 3 = idx === 0 ? 2 : idx === 1 ? 1 : 3;
             return (
               <PodiumItem
                 key={`podium-${game.categoryId}`}
@@ -514,6 +518,26 @@ function GameRankingBody({
     </>
   );
 }
+const SCORE_TOOLTIP_LINES = [
+  "시청자 (60%) — 최근 7일 평균 동시시청자의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠 0~100점으로 환산해요",
+  "방송 수 (40%) — 최근 7일 방송 수의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠 0~100점으로 환산해요",
+  "추세는 점수에 반영되지 않고, 최근 3일 평균과 이전 4일 평균을 비교해 참고용으로만 보여드려요",
+  "상위 2,000개 방송 기준으로 집계됩니다",
+];
+
+const MAX_TOOLTIP_LINES = [
+  "오늘 데이터는 제외됩니다 (매일 06:00 집계)",
+  "최고 동시시청자 = 하루 중 전체 시청자 합산 최고값",
+  "최고 시청자 = 단일 방송 최고 시청자",
+  "상위 2,000개 방송 기준으로 5분마다 수집됩니다",
+];
+
+const LIVE_TOOLTIP_LINES = [
+  "5분마다 자동 갱신되는 실시간 데이터예요",
+  "탭을 열 때의 최신 수집 시점 기준이에요",
+  "상위 2,000개 방송 기준으로 집계됩니다",
+];
+
 function LiveSubtitle({ livePromise }: { livePromise: Promise<LiveData> }) {
   const { collectedAt } = use(livePromise);
   return (
@@ -521,15 +545,7 @@ function LiveSubtitle({ livePromise }: { livePromise: Promise<LiveData> }) {
       <p className="text-xs md:text-sm text-white/40">
         {formatCollectedAt(collectedAt)} 기준
       </p>
-
-      <div className="relative group">
-        <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 md:w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 text-left space-y-1.5">
-          <p>· 5분마다 자동 갱신되는 실시간 데이터예요</p>
-          <p>· 탭을 열 때의 최신 수집 시점 기준이에요</p>
-          <p>· 상위 2,000개 방송 기준으로 집계됩니다</p>
-        </div>
-      </div>
+      <InfoTooltip lines={LIVE_TOOLTIP_LINES} />
     </>
   );
 }
@@ -543,7 +559,7 @@ export function TrendingGame({ livePromise, byMax, byScore }: Props) {
   const isLive = active === "byLive";
 
   return (
-    <section className=" space-y-6 px-4 md:px-0">
+    <section className="space-y-6 px-4 md:px-0">
       <div className="text-center mt-8 md:mt-16 mb-4 md:mb-8">
         <h1 className="text-4xl mb-4 md:text-6xl font-extrabold text-white">
           트렌딩 게임
@@ -564,36 +580,14 @@ export function TrendingGame({ livePromise, byMax, byScore }: Props) {
               <p className="text-xs md:text-sm text-white/40">
                 최근 7일간 데이터 기준
               </p>
-              <div className="relative group">
-                <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 md:w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 text-left space-y-1.5">
-                  <p>
-                    · 시청자 (60%) — 최근 7일 평균 동시시청자 기준, 1위 게임은
-                    100점
-                  </p>
-                  <p>· 방송 수 (40%) — 최근 7일 총 방송 수 기준</p>
-                  <p>
-                    · 추세 감점 — 최근 3일 평균이 이전 4일 평균보다 크게
-                    하락하면 감점돼요
-                  </p>
-                  <p>· 상위 2,000개 방송 기준으로 집계됩니다</p>
-                </div>
-              </div>
+              <InfoTooltip lines={SCORE_TOOLTIP_LINES} />
             </>
           ) : (
             <>
               <p className="text-xs md:text-sm text-white/40">
                 최근 3일간 시청자 기준
               </p>
-              <div className="relative group">
-                <Info className="w-4 h-4 text-white/30 cursor-help -translate-y-px" />
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 md:w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 text-left space-y-1.5">
-                  <p>· 오늘 데이터는 제외됩니다 (매일 06:00 집계)</p>
-                  <p>· 최고 동시시청자 = 하루 중 전체 시청자 합산 최고값</p>
-                  <p>· 최고 시청자 = 단일 방송 최고 시청자</p>
-                  <p>· 상위 2,000개 방송 기준으로 5분마다 수집됩니다</p>
-                </div>
-              </div>
+              <InfoTooltip lines={MAX_TOOLTIP_LINES} />
             </>
           )}
         </div>
