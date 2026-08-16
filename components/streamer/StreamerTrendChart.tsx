@@ -35,13 +35,24 @@ type TrendRow = {
   gameBreakdown?: GameBreakdown[];
 };
 
-type Props = {
-  trendRows: TrendRow[];
+type LiveTrendPoint = {
+  time: string;
+  collectedAt: string;
+  concurrentUserCount: number;
+  category: string;
+  categoryId: string;
+  liveTitle: string;
 };
 
-type Metric = "concurrentViewers" | "maxViewers";
+type Props = {
+  trendRows: TrendRow[];
+  liveTrendPoints?: LiveTrendPoint[];
+};
+
+type Metric = "concurrentViewers" | "maxViewers" | "live";
 
 const metricTabs = [
+  { label: "실시간", key: "live" as const },
   { label: "평균 시청자", key: "concurrentViewers" as const },
   { label: "최고 시청자", key: "maxViewers" as const },
 ];
@@ -60,7 +71,8 @@ function StreamerTrendTooltip(props: any) {
   }, [active, payload, onActiveRow]);
   if (!active || !payload?.length) return null;
   const row = payload[0]?.payload as TrendRow | undefined;
-  if (!row) return null;
+
+  if (!row || typeof row.concurrentViewers !== "number") return null;
 
   const headerLabel = metric === "maxViewers" ? "최고 시청자" : "평균 시청자";
   const headerValue =
@@ -129,9 +141,61 @@ function StreamerTrendTooltip(props: any) {
   );
 }
 
-export function StreamerTrendChart({ trendRows }: Props) {
+// 실시간 탭(오늘 하루 타임라인) 전용 툴팁. 날짜별 트렌드와 달리 gameBreakdown이 없고
+// 시각(time)·카테고리 하나만 보여주면 됨.
+function StreamerLiveTrendTooltip(props: any) {
+  const { active, payload, onActivePoint } = props;
+  useEffect(() => {
+    if (active && payload?.length) {
+      onActivePoint?.(payload[0]?.payload as LiveTrendPoint);
+    }
+  }, [active, payload, onActivePoint]);
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload as LiveTrendPoint | undefined;
+  if (!point || typeof point.concurrentUserCount !== "number") return null;
+
+  const content = (
+    <>
+      <div className="mb-2.5 flex items-center gap-2 border-b pb-2">
+        <span
+          className="h-2.5 w-2.5 rounded-full flex-shrink-0"
+          style={{ background: "var(--chart-1)" }}
+        />
+        <span className="text-sm font-semibold">실시간 시청자</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {point.time}
+        </span>
+      </div>
+      <p className="text-xs font-medium text-foreground">{point.category}</p>
+      {point.liveTitle && (
+        <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
+          {point.liveTitle}
+        </p>
+      )}
+      <div className="flex justify-end mt-4">
+        <span className="font-bold">
+          {point.concurrentUserCount.toLocaleString()} 명
+        </span>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="hidden md:block max-w-[280px] min-w-[220px] rounded-lg border bg-popover px-3.5 py-3 text-sm shadow-md">
+        {content}
+      </div>
+      <div className="md:hidden" />
+    </>
+  );
+}
+
+export function StreamerTrendChart({ trendRows, liveTrendPoints = [] }: Props) {
   const [activeRow, setActiveRow] = useState<TrendRow | null>(null);
-  const [metric, setMetric] = useState<Metric>("concurrentViewers");
+  const [activeLivePoint, setActiveLivePoint] = useState<LiveTrendPoint | null>(
+    null,
+  );
+  const [metric, setMetric] = useState<Metric>("live");
   const [selectedGame, setSelectedGame] = useState<string>(""); // categoryId, "" = 전체
   const [gamePickerOpen, setGamePickerOpen] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -169,7 +233,12 @@ export function StreamerTrendChart({ trendRows }: Props) {
     return trendRows.filter((r) => r.date >= from && r.date <= to);
   }, [trendRows, dateRange]);
 
-  const metricLabel = metric === "maxViewers" ? "최고 시청자" : "평균 시청자";
+  const metricLabel =
+    metric === "live"
+      ? "실시간 시청자"
+      : metric === "maxViewers"
+        ? "최고 시청자"
+        : "평균 시청자";
   const gameOptions = useMemo(() => {
     const map = new Map<
       string,
@@ -209,6 +278,12 @@ export function StreamerTrendChart({ trendRows }: Props) {
         };
       });
   }, [filteredRows, selectedGame]);
+  const isLive = metric === "live";
+  const hourTicks = useMemo(
+    () =>
+      liveTrendPoints.filter((p) => p.time.endsWith(":00")).map((p) => p.time),
+    [liveTrendPoints],
+  );
   return (
     <div className="space-y-3">
       <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
@@ -226,195 +301,261 @@ export function StreamerTrendChart({ trendRows }: Props) {
             onChange={setMetric}
           />
 
-          <Dialog open={gamePickerOpen} onOpenChange={setGamePickerOpen}>
-            <DialogTrigger asChild>
-              <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs md:text-sm text-white/70 hover:border-white/20">
-                {selectedGameInfo ? (
-                  <>{selectedGameInfo.category}</>
-                ) : (
-                  "전체 게임"
-                )}
-                <ChevronDown className="w-3 h-3 text-white/40" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className=" sm:max-w-lg lg:max-w-xl xl:max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>카테고리 선택</DialogTitle>
-              </DialogHeader>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[70vh] overflow-y-auto pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
-                <button
-                  onClick={() => {
-                    setSelectedGame("");
-                    setGamePickerOpen(false);
-                  }}
-                  className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
-                    !selectedGame ? "bg-white/10" : "hover:bg-white/5"
-                  }`}
-                >
-                  <div className="w-full aspect-3/4 rounded-lg bg-white/10 flex items-center justify-center text-lg font-bold text-white/60">
-                    전체
-                  </div>
-                  <span className="text-sm text-white/70 truncate w-full text-center">
-                    전체 게임
-                  </span>
+          {!isLive && (
+            <Dialog open={gamePickerOpen} onOpenChange={setGamePickerOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs md:text-sm text-white/70 hover:border-white/20">
+                  {selectedGameInfo ? (
+                    <>{selectedGameInfo.category}</>
+                  ) : (
+                    "전체 게임"
+                  )}
+                  <ChevronDown className="w-3 h-3 text-white/40" />
                 </button>
-                {gameOptions.map((g) => (
+              </DialogTrigger>
+              <DialogContent className=" sm:max-w-lg lg:max-w-xl xl:max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>카테고리 선택</DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 max-h-[70vh] overflow-y-auto pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden">
                   <button
-                    key={g.categoryId}
                     onClick={() => {
-                      setSelectedGame(g.categoryId);
+                      setSelectedGame("");
                       setGamePickerOpen(false);
                     }}
                     className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
-                      selectedGame === g.categoryId
-                        ? "bg-white/10"
-                        : "hover:bg-white/5"
+                      !selectedGame ? "bg-white/10" : "hover:bg-white/5"
                     }`}
                   >
-                    <div className="w-full aspect-3/4 rounded-lg overflow-hidden bg-white/10">
-                      {g.posterImageUrl ? (
-                        <Image
-                          src={g.posterImageUrl}
-                          alt={g.category}
-                          width={80}
-                          height={80}
-                          className="object-cover w-full h-full"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-white/60">
-                          {g.category[0]}
-                        </div>
-                      )}
+                    <div className="w-full aspect-3/4 rounded-lg bg-white/10 flex items-center justify-center text-lg font-bold text-white/60">
+                      전체
                     </div>
                     <span className="text-sm text-white/70 truncate w-full text-center">
-                      {g.category}
+                      전체 게임
                     </span>
                   </button>
-                ))}
-              </div>
-            </DialogContent>
-          </Dialog>
+                  {gameOptions.map((g) => (
+                    <button
+                      key={g.categoryId}
+                      onClick={() => {
+                        setSelectedGame(g.categoryId);
+                        setGamePickerOpen(false);
+                      }}
+                      className={`flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors ${
+                        selectedGame === g.categoryId
+                          ? "bg-white/10"
+                          : "hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="w-full aspect-3/4 rounded-lg overflow-hidden bg-white/10">
+                        {g.posterImageUrl ? (
+                          <Image
+                            src={g.posterImageUrl}
+                            alt={g.category}
+                            width={80}
+                            height={80}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-white/60">
+                            {g.category[0]}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-sm text-white/70 truncate w-full text-center">
+                        {g.category}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
-        {/* 기간 선택 박스 — 뱃지 + 프리셋 + 구분선 + DateRangePicker 다시 감쌈 */}
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1.5">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 text-sm font-semibold text-white">
-            <CalendarDays className="h-4 w-4 shrink-0 text-white/40" />
-            {dayCount ? `최근 ${dayCount}일` : "기간 선택"}
-          </div>
+        {/* 기간 선택 박스 — 실시간 탭은 "오늘"만 의미가 있어서 기간 선택 자체를 숨김 */}
+        {!isLive && (
+          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1.5">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 text-sm font-semibold text-white">
+              <CalendarDays className="h-4 w-4 shrink-0 text-white/40" />
+              {dayCount ? `최근 ${dayCount}일` : "기간 선택"}
+            </div>
 
-          <div className="h-5 w-px bg-white/10" />
+            <div className="h-5 w-px bg-white/10" />
 
-          <div className="flex items-center gap-0.5">
-            {presets.map((p) => (
-              <button
-                key={p.days}
-                onClick={() => applyPreset(p.days)}
-                className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
-                style={
-                  dayCount === p.days
-                    ? {
-                        background:
-                          "color-mix(in oklch, var(--chart-1), transparent 85%)",
-                        color: "var(--chart-1)",
-                      }
-                    : undefined
-                }
-              >
-                <span
-                  className={
+            <div className="flex items-center gap-0.5">
+              {presets.map((p) => (
+                <button
+                  key={p.days}
+                  onClick={() => applyPreset(p.days)}
+                  className="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors"
+                  style={
                     dayCount === p.days
-                      ? ""
-                      : "text-white/40 hover:text-white/70"
+                      ? {
+                          background:
+                            "color-mix(in oklch, var(--chart-1), transparent 85%)",
+                          color: "var(--chart-1)",
+                        }
+                      : undefined
                   }
                 >
-                  {p.label}
-                </span>
-              </button>
-            ))}
+                  <span
+                    className={
+                      dayCount === p.days
+                        ? ""
+                        : "text-white/40 hover:text-white/70"
+                    }
+                  >
+                    {p.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="h-5 w-px bg-white/10" />
+
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
-
-          <div className="h-5 w-px bg-white/10" />
-
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
-        </div>
+        )}
       </div>
 
-      <ChartLineDefault
-        title={
-          selectedGameInfo ? `${selectedGameInfo.category} ` : `전체 게임 `
-        }
-        description={`${filteredRows[0]?.displayDate ?? ""} ~ ${filteredRows[filteredRows.length - 1]?.displayDate ?? ""}`}
-        data={chartRows}
-        dataKey={metric}
-        xAxisKey="displayDate"
-        label={metricLabel}
-        footerNote={
-          selectedGameInfo
-            ? `${selectedGameInfo.category} · 최근 ${chartRows.length}일 기준`
-            : `전체 게임 통합 · 최근 ${filteredRows.length}일 기준`
-        }
-        renderTooltip={
-          <StreamerTrendTooltip metric={metric} onActiveRow={setActiveRow} />
-        }
-      />
+      {isLive ? (
+        <>
+          <ChartLineDefault
+            title="오늘 실시간 시청자"
+            description={
+              liveTrendPoints.length > 0
+                ? `${liveTrendPoints[0].time} ~ ${liveTrendPoints[liveTrendPoints.length - 1].time}`
+                : "아직 오늘 방송 기록이 없어요"
+            }
+            data={liveTrendPoints}
+            dataKey="concurrentUserCount"
+            xAxisKey="time"
+            label={metricLabel}
+            footerNote="5분 간격 수집 기준 · 오늘(06:00~현재)"
+            xAxisTicks={hourTicks}
+            xAxisTickFormatter={(value) =>
+              value.endsWith(":00") ? `${value}` : ""
+            }
+            renderTooltip={
+              <StreamerLiveTrendTooltip onActivePoint={setActiveLivePoint} />
+            }
+          />
 
-      {/* 모바일 전용 하단 고정 패널 */}
-      {activeRow && (
-        <div className="md:hidden rounded-lg border bg-popover px-3.5 py-3 text-sm">
-          <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
-            <span
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ background: "var(--chart-1)" }}
-            />
-            {metric === "maxViewers" ? "최고 시청자" : "평균 시청자"}
-            <span className="ml-auto">
-              {(metric === "maxViewers"
-                ? activeRow.maxViewers
-                : activeRow.concurrentViewers
-              ).toLocaleString()}{" "}
-              명
-            </span>
-          </div>
-
-          {activeRow.gameBreakdown && activeRow.gameBreakdown.length > 0 && (
-            <div className="space-y-2.5">
-              {activeRow.gameBreakdown.map((g) => {
-                const gameValue =
-                  metric === "maxViewers" ? g.maxViewers : g.concurrentViewers;
-                return (
-                  <div key={g.category}>
-                    <p className="text-xs font-medium text-foreground">
-                      {g.category}
-                    </p>
-                    <p className="mt-0.5 flex gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {metric === "maxViewers" ? "최고" : "평균"}{" "}
-                        {gameValue.toLocaleString()}명
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDuration(g.broadcastCount)}
-                      </span>
-                    </p>
-                    {g.liveTitle && (
-                      <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
-                        {g.liveTitle}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+          {/* 모바일 전용 하단 고정 패널 (실시간 탭) */}
+          {activeLivePoint && (
+            <div className="md:hidden rounded-lg border bg-popover px-3.5 py-3 text-sm">
+              <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: "var(--chart-1)" }}
+                />
+                실시간 시청자
+                <span className="ml-auto">
+                  {activeLivePoint.concurrentUserCount.toLocaleString()} 명
+                </span>
+              </div>
+              <p className="text-xs font-medium text-foreground">
+                {activeLivePoint.category}
+              </p>
+              {activeLivePoint.liveTitle && (
+                <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
+                  {activeLivePoint.liveTitle}
+                </p>
+              )}
+              <div className="flex justify-end mt-2">
+                <span className="text-xs text-muted-foreground/90">
+                  {activeLivePoint.time}
+                </span>
+              </div>
             </div>
           )}
+        </>
+      ) : (
+        <>
+          <ChartLineDefault
+            title={
+              selectedGameInfo ? `${selectedGameInfo.category} ` : `전체 게임 `
+            }
+            description={`${filteredRows[0]?.displayDate ?? ""} ~ ${filteredRows[filteredRows.length - 1]?.displayDate ?? ""}`}
+            data={chartRows}
+            dataKey={metric}
+            xAxisKey="displayDate"
+            label={metricLabel}
+            footerNote={
+              selectedGameInfo
+                ? `${selectedGameInfo.category} · 최근 ${chartRows.length}일 기준`
+                : `전체 게임 통합 · 최근 ${filteredRows.length}일 기준`
+            }
+            renderTooltip={
+              <StreamerTrendTooltip
+                metric={metric}
+                onActiveRow={setActiveRow}
+              />
+            }
+          />
 
-          <div className="flex justify-end mt-2">
-            <span className="text-xs text-muted-foreground/90">
-              {formatKoreanDate(activeRow.displayDate)}
-            </span>
-          </div>
-        </div>
+          {/* 모바일 전용 하단 고정 패널 */}
+          {!isLive && activeRow && (
+            <div className="md:hidden rounded-lg border bg-popover px-3.5 py-3 text-sm">
+              <div className="mb-2.5 flex items-center gap-2 border-b pb-2 font-semibold">
+                <span
+                  className="h-2.5 w-2.5 rounded-full"
+                  style={{ background: "var(--chart-1)" }}
+                />
+                {metric === "maxViewers" ? "최고 시청자" : "평균 시청자"}
+                <span className="ml-auto">
+                  {(metric === "maxViewers"
+                    ? activeRow.maxViewers
+                    : activeRow.concurrentViewers
+                  ).toLocaleString()}{" "}
+                  명
+                </span>
+              </div>
+
+              {activeRow.gameBreakdown &&
+                activeRow.gameBreakdown.length > 0 && (
+                  <div className="space-y-2.5">
+                    {activeRow.gameBreakdown.map((g) => {
+                      const gameValue =
+                        metric === "maxViewers"
+                          ? g.maxViewers
+                          : g.concurrentViewers;
+                      return (
+                        <div key={g.category}>
+                          <p className="text-xs font-medium text-foreground">
+                            {g.category}
+                          </p>
+                          <p className="mt-0.5 flex gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {metric === "maxViewers" ? "최고" : "평균"}{" "}
+                              {gameValue.toLocaleString()}명
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {formatDuration(g.broadcastCount)}
+                            </span>
+                          </p>
+                          {g.liveTitle && (
+                            <p className="mt-0.5 truncate text-xs italic text-muted-foreground/60">
+                              {g.liveTitle}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+              <div className="flex justify-end mt-2">
+                <span className="text-xs text-muted-foreground/90">
+                  {formatKoreanDate(activeRow.displayDate)}
+                </span>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

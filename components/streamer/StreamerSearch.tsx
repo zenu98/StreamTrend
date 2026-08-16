@@ -1,5 +1,3 @@
-"use client";
-
 import { SearchInput } from "@/components/shared/SearchInput";
 import Image from "next/image";
 import Link from "next/link";

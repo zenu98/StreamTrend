@@ -36,8 +36,13 @@ type Props<T extends Record<string, unknown>> = {
   label?: string;
   footerNote?: string;
   renderTooltip?: TooltipContentProps;
+  xAxisTickFormatter?: (value: string, index: number) => string;
+  xAxisTicks?: (string | number)[];
 };
-
+const defaultDateTickFormatter = (value: string) => {
+  const [month, day] = value.split("-");
+  return day !== undefined ? `${month}.${day}` : value;
+};
 export function ChartLineDefault<T extends Record<string, unknown>>({
   title,
   description,
@@ -47,6 +52,8 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
   label = "값",
   footerNote,
   renderTooltip,
+  xAxisTickFormatter = defaultDateTickFormatter,
+  xAxisTicks,
 }: Props<T>) {
   const chartConfig = {
     [dataKey]: {
@@ -89,11 +96,9 @@ export function ChartLineDefault<T extends Record<string, unknown>>({
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
-                interval="preserveStartEnd"
-                tickFormatter={(value: string) => {
-                  const [month, day] = value.split("-");
-                  return `${month}.${day}`;
-                }}
+                interval={xAxisTicks ? 0 : "preserveStartEnd"}
+                ticks={xAxisTicks}
+                tickFormatter={xAxisTickFormatter}
               />
               <YAxis
                 tickLine={false}

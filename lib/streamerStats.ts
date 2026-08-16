@@ -1,6 +1,54 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { getKSTBusinessDate, toKSTDateString } from "./utils";
+export type StreamerLiveTrendPoint = {
+  time: string; // "HH:mm" (KST)
+  collectedAt: string; // ISO, 정확한 시각이 필요할 때(툴팁 등)를 위해 함께 제공
+  concurrentUserCount: number;
+  category: string;
+  categoryId: string;
+  liveTitle: string;
+};
+export async function getStreamerLiveTrend(
+  channelId: string,
+): Promise<StreamerLiveTrendPoint[]> {
+  "use cache";
+  cacheLife("statsTime"); // 5분마다 수집되는 데이터라 statsTime(revalidate 5분)과 주기가 맞음
+
+  const now = new Date();
+  const todayFrom = getKSTBusinessDayStart(now);
+
+  const snapshots = await prisma.liveSnapshot.findMany({
+    where: { channelId, collectedAt: { gte: todayFrom, lte: now } },
+    orderBy: { collectedAt: "asc" },
+    select: {
+      collectedAt: true,
+      concurrentUserCount: true,
+      liveCategory: true,
+      liveCategoryValue: true,
+      liveTitle: true,
+    },
+  });
+
+  return snapshots.map((s) => {
+    const kst = new Date(s.collectedAt.getTime() + 9 * 60 * 60 * 1000);
+    // 크론이 5분마다 돌긴 하지만 정확히 그 초에 실행된다는 보장이 없어서
+    // (16:00:00이 아니라 16:00:47처럼 밀릴 수 있음), 표시용 시각은 5분 단위로
+    // 반올림해서 항상 :00/:05/:10.. 처럼 정확히 떨어지게 만든다.
+    const totalMinutes = kst.getUTCHours() * 60 + kst.getUTCMinutes();
+    const roundedMinutes = Math.round(totalMinutes / 5) * 5;
+    const hh = String(Math.floor(roundedMinutes / 60) % 24).padStart(2, "0");
+    const mm = String(roundedMinutes % 60).padStart(2, "0");
+    return {
+      time: `${hh}:${mm}`,
+      collectedAt: s.collectedAt.toISOString(),
+      concurrentUserCount: s.concurrentUserCount,
+      category: s.liveCategoryValue,
+      categoryId: s.liveCategory,
+      liveTitle: s.liveTitle,
+    };
+  });
+}
 function getKSTBusinessDayStart(now: Date): Date {
   const boundary = getKSTBusinessDate(now);
   boundary.setUTCHours(6, 0, 0, 0);

@@ -3,6 +3,7 @@ import {
   getStreamerStats,
   getStreamerTopRecords,
   getStreamerTrend,
+  getStreamerLiveTrend,
 } from "@/lib/streamerStats";
 import Image from "next/image";
 import { Suspense } from "react";
@@ -49,13 +50,19 @@ async function StreamerDetail({
 }) {
   const { id } = await paramsPromise;
 
-  const [{ today, channelInfo }, allRows, topRecordsData, trendRows] =
-    await Promise.all([
-      getStreamerStats(id),
-      getStreamerAllStats(id),
-      getStreamerTopRecords(id),
-      getStreamerTrend(id),
-    ]);
+  const [
+    { today, channelInfo },
+    allRows,
+    topRecordsData,
+    trendRows,
+    liveTrendPoints,
+  ] = await Promise.all([
+    getStreamerStats(id),
+    getStreamerAllStats(id),
+    getStreamerTopRecords(id),
+    getStreamerTrend(id),
+    getStreamerLiveTrend(id),
+  ]);
 
   return (
     <main className="p-4 md:p-8 space-y-8 ">
@@ -100,7 +107,10 @@ async function StreamerDetail({
         <StreamerMainGame rows={allRows} />
       </section>
       <section className="space-y-4">
-        <StreamerTrendChart trendRows={trendRows} />
+        <StreamerTrendChart
+          trendRows={trendRows}
+          liveTrendPoints={liveTrendPoints}
+        />
       </section>
       <section className="space-y-4">
         <BroadcastCalendar trendRows={trendRows} gameRows={allRows} />
