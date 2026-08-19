@@ -279,11 +279,13 @@ export function StreamerTrendChart({ trendRows, liveTrendPoints = [] }: Props) {
       });
   }, [filteredRows, selectedGame]);
   const isLive = metric === "live";
-  const hourTicks = useMemo(
-    () =>
-      liveTrendPoints.filter((p) => p.time.endsWith(":00")).map((p) => p.time),
-    [liveTrendPoints],
-  );
+  const hourTicks = useMemo(() => {
+    const allHourPoints = liveTrendPoints.filter((p) => p.time.endsWith(":00"));
+    // 라벨 개수가 대략 이 안에 들어오도록 몇 시간 간격으로 보여줄지 결정
+    const MAX_LABELS = 6;
+    const step = Math.max(1, Math.ceil(allHourPoints.length / MAX_LABELS));
+    return allHourPoints.filter((_, i) => i % step === 0).map((p) => p.time);
+  }, [liveTrendPoints]);
   return (
     <div className="space-y-3">
       <h2 className="flex items-center gap-2 text-lg md:text-xl font-bold">
