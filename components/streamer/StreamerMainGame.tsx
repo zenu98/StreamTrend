@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, Calendar, Users } from "lucide-react";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, getKSTDateString } from "@/lib/utils";
 
 type Row = {
   date: string;
@@ -32,9 +32,8 @@ function getMainGames(rows: Row[]): GameStat[] {
   to.setDate(to.getDate() - 1);
   const from = new Date(kstNow);
   from.setDate(from.getDate() - 7);
-
-  const toStr = to.toISOString().slice(0, 10);
-  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = getKSTDateString(-1); // 어제(가장 최근 완결된 영업일)
+  const fromStr = getKSTDateString(-7); // 7일 전
 
   const filtered = rows.filter((r) => r.date >= fromStr && r.date <= toStr);
 

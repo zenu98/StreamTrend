@@ -21,7 +21,7 @@ export function SearchInput<T>({
   const [results, setResults] = useState<T[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+
   const debouncedQuery = useDebounce(query, 300);
 
   useEffect(() => {
@@ -29,7 +29,6 @@ export function SearchInput<T>({
     if (!trimmed) return;
 
     const controller = new AbortController();
-    abortRef.current = controller;
 
     const run = async () => {
       setLoading(true);

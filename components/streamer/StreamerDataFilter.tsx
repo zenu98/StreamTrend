@@ -8,6 +8,7 @@ import { ChartBarMixed } from "@/components/ui/charts/bar-chart-mixed";
 import { StreamerGameDistribution } from "./StreamerGameDistribution";
 import { DateRangePicker } from "@/components/shared/DateRangePicker";
 import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
+import { getKSTDateString, getKSTLocalDate } from "@/lib/utils";
 
 type Row = {
   date: string;
@@ -43,43 +44,19 @@ export function StreamerDateFilter({ rows }: Props) {
   const [active, setActive] = useState<PresetKey | "custom">("weekly");
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
   const [metric, setMetric] = useState<Metric>("avgViewers");
-
   const filtered = useMemo(() => {
-    const today = new Date();
-    const kstToday = new Date(today.getTime() + 9 * 60 * 60 * 1000)
-      .toISOString()
-      .slice(0, 10);
-
     if (active === "yesterday") {
-      const yesterday = new Date(
-        today.getTime() + 9 * 60 * 60 * 1000 - 86400000,
-      )
-        .toISOString()
-        .slice(0, 10);
+      const yesterday = getKSTDateString(-1);
       return rows.filter((r) => r.date === yesterday);
     }
     if (active === "weekly") {
-      const from = new Date(today.getTime() + 9 * 60 * 60 * 1000 - 7 * 86400000)
-        .toISOString()
-        .slice(0, 10);
-      const yesterday = new Date(
-        today.getTime() + 9 * 60 * 60 * 1000 - 86400000,
-      )
-        .toISOString()
-        .slice(0, 10);
-      return rows.filter((r) => r.date >= from && r.date <= yesterday); // kstToday → yesterday
+      const from = getKSTDateString(-7);
+      const yesterday = getKSTDateString(-1);
+      return rows.filter((r) => r.date >= from && r.date <= yesterday);
     }
     if (active === "monthly") {
-      const yesterday = new Date(
-        today.getTime() + 9 * 60 * 60 * 1000 - 86400000,
-      )
-        .toISOString()
-        .slice(0, 10);
-      const from = new Date(
-        today.getTime() + 9 * 60 * 60 * 1000 - 30 * 86400000,
-      )
-        .toISOString()
-        .slice(0, 10);
+      const from = getKSTDateString(-30);
+      const yesterday = getKSTDateString(-1);
       return rows.filter((r) => r.date >= from && r.date <= yesterday);
     }
     if (active === "all") {
@@ -151,27 +128,20 @@ export function StreamerDateFilter({ rows }: Props) {
   const setPreset = (key: PresetKey) => {
     setActive(key);
 
-    const today = new Date();
-
     if (key === "yesterday") {
-      const d = new Date(today);
-      d.setDate(d.getDate() - 1);
+      const d = getKSTLocalDate(-1);
       setCustomRange({ from: d, to: d });
       return;
     }
     if (key === "weekly") {
-      const to = new Date(today);
-      to.setDate(to.getDate() - 1); // 어제까지
-      const from = new Date(today);
-      from.setDate(from.getDate() - 7);
-      setCustomRange({ from, to }); // to가 today → yesterday
+      const to = getKSTLocalDate(-1);
+      const from = getKSTLocalDate(-7);
+      setCustomRange({ from, to });
       return;
     }
     if (key === "monthly") {
-      const to = new Date(today);
-      to.setDate(to.getDate() - 1);
-      const from = new Date(today);
-      from.setDate(from.getDate() - 29);
+      const to = getKSTLocalDate(-1);
+      const from = getKSTLocalDate(-30);
       setCustomRange({ from, to });
       return;
     }

@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { useMemo, useState } from "react";
 import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
 import { GameGrid } from "./GameGrid";
+import { getKSTBusinessDate, getKSTDateString } from "@/lib/utils";
 
 type TrendRow = {
   date: string;
@@ -51,7 +52,7 @@ export function BroadcastCalendar({ trendRows, gameRows }: Props) {
   }, [gameRows]);
 
   const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
-  const currentMonth = kstNow.toISOString().slice(0, 7);
+  const currentMonth = getKSTBusinessDate().toISOString().slice(0, 7);
 
   const months = Array.from(
     new Set([...trendRows.map((r) => r.date.slice(0, 7)), currentMonth]),
@@ -70,9 +71,7 @@ export function BroadcastCalendar({ trendRows, gameRows }: Props) {
     });
   }
 
-  const kstYesterday = new Date(kstNow.getTime());
-  kstYesterday.setUTCDate(kstYesterday.getUTCDate() - 1);
-  const kstYesterdayStr = kstYesterday.toISOString().slice(0, 10);
+  const kstYesterdayStr = getKSTDateString(-1);
 
   const days = getDaysInMonth(activeMonth).filter(
     (date) => date <= kstYesterdayStr,

@@ -15,7 +15,7 @@ import { CalendarDays, Users, Clock } from "lucide-react";
 import { ChartLineDefault } from "../ui/charts/chart-line-default";
 import { DateRangePicker } from "@/components/shared/DateRangePicker";
 import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
-import { formatDuration, formatKoreanDate } from "@/lib/utils";
+import { formatDuration, formatKoreanDate, getKSTLocalDate } from "@/lib/utils";
 
 type GameBreakdown = {
   category: string;
@@ -198,24 +198,17 @@ export function StreamerTrendChart({ trendRows, liveTrendPoints = [] }: Props) {
   const [metric, setMetric] = useState<Metric>("live");
   const [selectedGame, setSelectedGame] = useState<string>(""); // categoryId, "" = 전체
   const [gamePickerOpen, setGamePickerOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
-    const to = new Date();
-    to.setDate(to.getDate() - 1);
-    const from = new Date();
-    from.setDate(from.getDate() - 7);
-    return { from, to };
-  });
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => ({
+    from: getKSTLocalDate(-7),
+    to: getKSTLocalDate(-1),
+  }));
   const dayCount =
     dateRange?.from && dateRange?.to
       ? differenceInCalendarDays(dateRange.to, dateRange.from) + 1
       : null;
 
   const applyPreset = (days: number) => {
-    const to = new Date();
-    to.setDate(to.getDate() - 1); // 어제까지
-    const from = new Date();
-    from.setDate(from.getDate() - days); // days일 전부터
-    setDateRange({ from, to });
+    setDateRange({ from: getKSTLocalDate(-days), to: getKSTLocalDate(-1) });
   };
 
   const filteredRows = useMemo(() => {
