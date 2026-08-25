@@ -28,7 +28,6 @@ model LiveSnapshot {
   channelId             String
   channelName           String
   channelImageUrl       String?
-  followerCount         Int      @default(0)
 
   @@index([collectedAt])
   @@index([collectedAt, categoryType])
