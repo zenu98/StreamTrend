@@ -12,6 +12,7 @@ datasource db {
   provider = "postgresql"
 }
 
+//123
 model LiveSnapshot {
   id                    Int      @id @default(autoincrement())
   collectedAt           DateTime @default(now())
