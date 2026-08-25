@@ -48,6 +48,7 @@ model DailySummary {
 
   @@unique([date, liveCategoryValue, categoryType])
   @@index([date, categoryType])
+  @@index([liveCategory, categoryType, date])
 }
 
 model StreamerDailySummary {
@@ -68,6 +69,8 @@ model StreamerDailySummary {
   @@unique([date, channelId, liveCategory, categoryType])
   @@index([channelId, date])
   @@index([date, liveCategory])
+  @@index([liveCategory, categoryType, maxViewers])
+  @@index([liveCategory, categoryType, date])
 }
 
 model Category {
@@ -84,4 +87,6 @@ model Streamer {
   updatedAt       DateTime @updatedAt
   followerCount   Int      @default(0)
   verifiedMark    Boolean  @default(false)
+
+  @@index([channelName])
 }

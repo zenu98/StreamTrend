@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useDeferredValue } from "react";
+import { useState, useTransition, useDeferredValue, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { DateRange } from "react-day-picker";
@@ -10,6 +10,7 @@ import { UnderlineTabs } from "@/components/shared/UnderlineTabs";
 import { DateFilterTab } from "../ui/date-filter-tab";
 import { formatDuration } from "@/lib/utils";
 import { Info } from "lucide-react";
+import { ACTIVE_FESTIVALS } from "@/lib/data/festival";
 
 type Props = {
   topRecords: TopStreamerEntry[];
@@ -28,7 +29,7 @@ type BroadcastEntry = {
 
 type SortKey = "broadcast" | "avgViewers";
 
-const tabs = [
+const baseTabs = [
   { label: "채널별 최고", key: "channels" as const },
   { label: "전체 기록", key: "records" as const },
   { label: "방송 시간", key: "broadcast" as const },
@@ -60,15 +61,26 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
+type ActiveTab = "records" | "channels" | "broadcast" | "tournament";
+
 export function GameTopStreamers({
   topRecords,
   topChannels,
   categoryId,
   defaultDisplayLimit = 10,
 }: Props) {
-  const [active, setActive] = useState<"records" | "channels" | "broadcast">(
-    "channels",
+  const festival = ACTIVE_FESTIVALS[categoryId] ?? null;
+  const tabs = festival
+    ? [...baseTabs, { label: festival.label, key: "tournament" as const }]
+    : baseTabs;
+  // 팀 구조(teams) 안의 channelId를 전부 펼쳐서 API 조회용으로 씀
+  const festivalChannelIds = useMemo(
+    () =>
+      festival?.teams.flatMap((t) => t.members.map((m) => m.channelId)) ?? [],
+    [festival],
   );
+
+  const [active, setActive] = useState<ActiveTab>("channels");
   const [includeTournaments, setIncludeTournaments] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
@@ -78,11 +90,16 @@ export function GameTopStreamers({
   const [dayCount, setDayCount] = useState<number | null>(7);
   const [broadcastData, setBroadcastData] = useState<BroadcastEntry[]>([]);
   const [hasMore, setHasMore] = useState(false);
+  // 대회 참가자 목록은 "방송 시간" 탭 데이터와 별개로 관리 (탭 전환 시 서로 안 섞이게)
+  const [tournamentData, setTournamentData] = useState<BroadcastEntry[]>([]);
   const [sortKey, setSortKey] = useState<SortKey>("broadcast");
   const [isPending, startTransition] = useTransition();
   const [isLoadingMore, startLoadingMore] = useTransition();
   const deferredData = useDeferredValue<BroadcastEntry[]>(broadcastData);
+  const deferredTournamentData =
+    useDeferredValue<BroadcastEntry[]>(tournamentData);
   const isStale = broadcastData !== deferredData;
+  const isTournamentStale = tournamentData !== deferredTournamentData;
   const rawList = active === "records" ? topRecords : topChannels;
   const filteredList = includeTournaments
     ? rawList
@@ -108,17 +125,32 @@ export function GameTopStreamers({
     skip: number,
     sort: SortKey,
     append = false,
+    channelIds?: string[],
   ) {
+    const channelIdsParam = channelIds?.length
+      ? `&channelIds=${channelIds.join(",")}`
+      : "";
     const res = await fetch(
-      `/api/game-broadcast-rank?categoryId=${categoryId}&from=${from}&to=${to}&skip=${skip}&orderBy=${sort}`,
+      `/api/game-broadcast-rank?categoryId=${categoryId}&from=${from}&to=${to}&skip=${skip}&orderBy=${sort}${channelIdsParam}`,
     );
     const data: BroadcastEntry[] = await res.json();
-    if (append) {
-      setBroadcastData((prev) => [...prev, ...data]);
+
+    if (channelIds) {
+      // 대회 참가자 목록 탭
+      if (append) {
+        setTournamentData((prev) => [...prev, ...data]);
+      } else {
+        setTournamentData(data);
+      }
     } else {
-      setBroadcastData(data);
+      // 일반 "방송 시간" 탭
+      if (append) {
+        setBroadcastData((prev) => [...prev, ...data]);
+      } else {
+        setBroadcastData(data);
+      }
+      setHasMore(data.length === PAGE_SIZE);
     }
-    setHasMore(data.length === PAGE_SIZE);
   }
 
   function handleDateChange(range: DateRange, days: number | null) {
@@ -127,17 +159,31 @@ export function GameTopStreamers({
     const from = format(range.from!, "yyyy-MM-dd");
     const to = format(range.to!, "yyyy-MM-dd");
     startTransition(async () => {
-      await fetchBroadcast(from, to, 0, sortKey);
+      await fetchBroadcast(
+        from,
+        to,
+        0,
+        sortKey,
+        false,
+        active === "tournament" ? festivalChannelIds : undefined,
+      );
     });
   }
 
-  function handleTabChange(key: "records" | "channels" | "broadcast") {
+  function handleTabChange(key: ActiveTab) {
     setActive(key);
     if (key === "broadcast" && broadcastData.length === 0) {
       const from = format(dateRange.from!, "yyyy-MM-dd");
       const to = format(dateRange.to!, "yyyy-MM-dd");
       startTransition(async () => {
         await fetchBroadcast(from, to, 0, sortKey);
+      });
+    }
+    if (key === "tournament" && festival && tournamentData.length === 0) {
+      const from = format(dateRange.from!, "yyyy-MM-dd");
+      const to = format(dateRange.to!, "yyyy-MM-dd");
+      startTransition(async () => {
+        await fetchBroadcast(from, to, 0, sortKey, false, festivalChannelIds);
       });
     }
   }
@@ -147,15 +193,30 @@ export function GameTopStreamers({
     const from = format(dateRange.from!, "yyyy-MM-dd");
     const to = format(dateRange.to!, "yyyy-MM-dd");
     startTransition(async () => {
-      await fetchBroadcast(from, to, 0, sort);
+      await fetchBroadcast(
+        from,
+        to,
+        0,
+        sort,
+        false,
+        active === "tournament" ? festivalChannelIds : undefined,
+      );
     });
   }
 
   function handleLoadMore() {
     const from = format(dateRange.from!, "yyyy-MM-dd");
     const to = format(dateRange.to!, "yyyy-MM-dd");
+    const isTournamentTab = active === "tournament";
     startLoadingMore(async () => {
-      await fetchBroadcast(from, to, broadcastData.length, sortKey, true);
+      await fetchBroadcast(
+        from,
+        to,
+        isTournamentTab ? tournamentData.length : broadcastData.length,
+        sortKey,
+        true,
+        isTournamentTab ? festivalChannelIds : undefined,
+      );
     });
   }
 
@@ -186,7 +247,7 @@ export function GameTopStreamers({
           active={active}
           onChange={handleTabChange}
         />
-        {active === "broadcast" && (
+        {(active === "broadcast" || active === "tournament") && (
           <DateFilterTab
             dateRange={dateRange}
             dayCount={dayCount}
@@ -211,7 +272,82 @@ export function GameTopStreamers({
         )}
       </div>
 
-      {active === "broadcast" ? (
+      {active === "tournament" && festival ? (
+        <div className="space-y-3">
+          {(() => {
+            // channelId -> 조회된 방송시간 데이터 빠르게 찾기 위한 lookup
+            const dataByChannelId = new Map(
+              deferredTournamentData.map((e) => [e.channelId, e]),
+            );
+
+            if (isPending && deferredTournamentData.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              );
+            }
+
+            return (
+              <div
+                className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+                  isTournamentStale ? "opacity-50 pointer-events-none" : ""
+                }`}
+              >
+                {festival.teams.map((team) => (
+                  <div
+                    key={team.teamName}
+                    className="rounded-lg border bg-card p-3"
+                  >
+                    <p className="mb-2 text-sm font-bold">{team.teamName}</p>
+                    <div className="divide-y">
+                      {team.members.map((member) => {
+                        const entry = dataByChannelId.get(member.channelId);
+                        return (
+                          <Link
+                            key={member.channelId}
+                            href={`/streamers/${member.channelId}`}
+                            className="flex items-center gap-2.5 py-2 transition-colors hover:bg-muted/50"
+                          >
+                            {entry?.channelImageUrl ? (
+                              <Image
+                                src={entry.channelImageUrl}
+                                alt={member.name}
+                                width={32}
+                                height={32}
+                                className="h-8 w-8 shrink-0 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
+                                {member.name[0]}
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <p className="truncate text-sm font-medium">
+                                  {member.name}
+                                </p>
+                                {member.isLeader && (
+                                  <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                                    팀장
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="shrink-0 text-xs font-semibold text-muted-foreground">
+                              {entry
+                                ? formatDuration(entry.broadcastCount)
+                                : "방송 없음"}
+                            </p>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      ) : active === "broadcast" ? (
         <div className="space-y-3">
           <div className="flex justify-end gap-3">
             {sortTabs.map((tab) => (
@@ -229,58 +365,66 @@ export function GameTopStreamers({
             ))}
           </div>
 
-          {isPending && deferredData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">로딩 중...</p>
-          ) : deferredData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">데이터 없음</p>
-          ) : (
-            <>
-              <div
-                className={`divide-y rounded-lg border bg-card ${isStale ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                {deferredData.map((entry: BroadcastEntry, i) => (
-                  <Link
-                    key={entry.channelId}
-                    href={`/streamers/${entry.channelId}`}
-                    className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
-                  >
-                    <RankBadge rank={i + 1} />
-                    {entry.channelImageUrl && (
-                      <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                        <Image
-                          src={entry.channelImageUrl}
-                          alt={entry.channelName}
-                          width={40}
-                          height={40}
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">
-                        {entry.channelName}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-bold">
-                        {formatDuration(entry.broadcastCount)}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              {hasMore && (
-                <button
-                  onClick={handleLoadMore}
-                  disabled={isLoadingMore}
-                  className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-50"
+          {(() => {
+            if (isPending && deferredData.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              );
+            }
+            if (deferredData.length === 0) {
+              return (
+                <p className="text-sm text-muted-foreground">데이터 없음</p>
+              );
+            }
+            return (
+              <>
+                <div
+                  className={`divide-y rounded-lg border bg-card ${isStale ? "opacity-50 pointer-events-none" : ""}`}
                 >
-                  {isLoadingMore ? "로딩 중..." : "더 보기"}
-                </button>
-              )}
-            </>
-          )}
+                  {deferredData.map((entry: BroadcastEntry, i) => (
+                    <Link
+                      key={entry.channelId}
+                      href={`/streamers/${entry.channelId}`}
+                      className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+                    >
+                      <RankBadge rank={i + 1} />
+                      {entry.channelImageUrl && (
+                        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                          <Image
+                            src={entry.channelImageUrl}
+                            alt={entry.channelName}
+                            width={40}
+                            height={40}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">
+                          {entry.channelName}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-bold">
+                          {formatDuration(entry.broadcastCount)}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={isLoadingMore}
+                    className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isLoadingMore ? "로딩 중..." : "더 보기"}
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : list.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
