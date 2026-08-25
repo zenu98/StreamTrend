@@ -28,16 +28,13 @@ type BroadcastEntry = {
 };
 
 type SortKey = "broadcast" | "avgViewers";
+// "방송 시간" 탭 안에서 뭘 보여줄지: 정렬된 전체 순위(broadcast/avgViewers) 또는 대회 팀별 보기
+type BroadcastView = SortKey | "tournament";
 
-const baseTabs = [
+const tabs = [
   { label: "채널별 최고", key: "channels" as const },
   { label: "전체 기록", key: "records" as const },
   { label: "방송 시간", key: "broadcast" as const },
-];
-
-const sortTabs = [
-  { label: "방송 시간순", key: "broadcast" as const },
-  { label: "평균 시청자순", key: "avgViewers" as const },
 ];
 
 const PAGE_SIZE = 20;
@@ -61,7 +58,7 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-type ActiveTab = "records" | "channels" | "broadcast" | "tournament";
+type ActiveTab = "records" | "channels" | "broadcast";
 
 export function GameTopStreamers({
   topRecords,
@@ -70,17 +67,34 @@ export function GameTopStreamers({
   defaultDisplayLimit = 10,
 }: Props) {
   const festival = ACTIVE_FESTIVALS[categoryId] ?? null;
-  const tabs = festival
-    ? [...baseTabs, { label: festival.label, key: "tournament" as const }]
-    : baseTabs;
   // 팀 구조(teams) 안의 channelId를 전부 펼쳐서 API 조회용으로 씀
   const festivalChannelIds = useMemo(
     () =>
       festival?.teams.flatMap((t) => t.members.map((m) => m.channelId)) ?? [],
     [festival],
   );
+  // 팀 멤버 카드에 표시될 순서(왼쪽 상수가 저장 순서와 달라도 이 순서대로 재배열됨)
+  const ROLE_DISPLAY_ORDER = ["팀장", "1티어", "2티어", "코치"] as const;
+
+  // 역할별 배지 색상
+  const roleBadgeStyle: Record<string, string> = {
+    팀장: "bg-primary/15 text-primary",
+    "1티어": "bg-sky-400/15 text-sky-300",
+    "2티어": "bg-emerald-400/15 text-emerald-300",
+    코치: "bg-violet-400/15 text-violet-300",
+  };
+  // "방송 시간" 탭 안에서 고를 수 있는 옵션들. 대회가 있는 카테고리에서만 세 번째 옵션이 추가됨.
+  const broadcastViewTabs = [
+    { label: "방송 시간순", key: "broadcast" as const },
+    { label: "평균 시청자순", key: "avgViewers" as const },
+    ...(festival
+      ? [{ label: festival.label, key: "tournament" as const }]
+      : []),
+  ];
 
   const [active, setActive] = useState<ActiveTab>("channels");
+  const [broadcastView, setBroadcastView] =
+    useState<BroadcastView>("broadcast");
   const [includeTournaments, setIncludeTournaments] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: subDays(new Date(), 7),
@@ -90,9 +104,8 @@ export function GameTopStreamers({
   const [dayCount, setDayCount] = useState<number | null>(7);
   const [broadcastData, setBroadcastData] = useState<BroadcastEntry[]>([]);
   const [hasMore, setHasMore] = useState(false);
-  // 대회 참가자 목록은 "방송 시간" 탭 데이터와 별개로 관리 (탭 전환 시 서로 안 섞이게)
+  // 대회 참가자 목록은 "방송 시간" 순위 데이터와 별개로 관리 (전환 시 서로 안 섞이게)
   const [tournamentData, setTournamentData] = useState<BroadcastEntry[]>([]);
-  const [sortKey, setSortKey] = useState<SortKey>("broadcast");
   const [isPending, startTransition] = useTransition();
   const [isLoadingMore, startLoadingMore] = useTransition();
   const deferredData = useDeferredValue<BroadcastEntry[]>(broadcastData);
@@ -104,12 +117,7 @@ export function GameTopStreamers({
   const filteredList = includeTournaments
     ? rawList
     : rawList.filter((e) => !e.isTournament);
-  // 이미 서버에서 넉넉히(최대 50개) 받아온 목록을 화면에는 조금씩만 보여준다.
-  // "더 보기"를 누르면 이미 받아온 데이터 안에서 displayCount만 늘려서 추가로 노출한다.
   const [displayCount, setDisplayCount] = useState(defaultDisplayLimit);
-  // 탭 전환이나 대회 포함 여부가 바뀌면 다시 처음(10개)부터 보여준다.
-  // useEffect로 리셋하면 렌더가 한 번 더 도니, 렌더링 중에 바로 조정한다.
-  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
   const listKey = `${active}-${includeTournaments}`;
   const [prevListKey, setPrevListKey] = useState(listKey);
   if (listKey !== prevListKey) {
@@ -136,14 +144,12 @@ export function GameTopStreamers({
     const data: BroadcastEntry[] = await res.json();
 
     if (channelIds) {
-      // 대회 참가자 목록 탭
       if (append) {
         setTournamentData((prev) => [...prev, ...data]);
       } else {
         setTournamentData(data);
       }
     } else {
-      // 일반 "방송 시간" 탭
       if (append) {
         setBroadcastData((prev) => [...prev, ...data]);
       } else {
@@ -163,59 +169,66 @@ export function GameTopStreamers({
         from,
         to,
         0,
-        sortKey,
+        broadcastView === "tournament" ? "broadcast" : broadcastView,
         false,
-        active === "tournament" ? festivalChannelIds : undefined,
+        broadcastView === "tournament" ? festivalChannelIds : undefined,
       );
     });
   }
 
   function handleTabChange(key: ActiveTab) {
     setActive(key);
-    if (key === "broadcast" && broadcastData.length === 0) {
+    if (
+      key === "broadcast" &&
+      broadcastView !== "tournament" &&
+      broadcastData.length === 0
+    ) {
       const from = format(dateRange.from!, "yyyy-MM-dd");
       const to = format(dateRange.to!, "yyyy-MM-dd");
       startTransition(async () => {
-        await fetchBroadcast(from, to, 0, sortKey);
-      });
-    }
-    if (key === "tournament" && festival && tournamentData.length === 0) {
-      const from = format(dateRange.from!, "yyyy-MM-dd");
-      const to = format(dateRange.to!, "yyyy-MM-dd");
-      startTransition(async () => {
-        await fetchBroadcast(from, to, 0, sortKey, false, festivalChannelIds);
+        await fetchBroadcast(from, to, 0, broadcastView);
       });
     }
   }
 
-  function handleSortChange(sort: SortKey) {
-    setSortKey(sort);
+  function handleBroadcastViewChange(view: BroadcastView) {
+    setBroadcastView(view);
     const from = format(dateRange.from!, "yyyy-MM-dd");
     const to = format(dateRange.to!, "yyyy-MM-dd");
+
+    if (view === "tournament") {
+      if (festival && tournamentData.length === 0) {
+        startTransition(async () => {
+          await fetchBroadcast(
+            from,
+            to,
+            0,
+            "broadcast",
+            false,
+            festivalChannelIds,
+          );
+        });
+      }
+      return;
+    }
+
     startTransition(async () => {
-      await fetchBroadcast(
-        from,
-        to,
-        0,
-        sort,
-        false,
-        active === "tournament" ? festivalChannelIds : undefined,
-      );
+      await fetchBroadcast(from, to, 0, view);
     });
   }
 
   function handleLoadMore() {
     const from = format(dateRange.from!, "yyyy-MM-dd");
     const to = format(dateRange.to!, "yyyy-MM-dd");
-    const isTournamentTab = active === "tournament";
+    const isTournamentView = broadcastView === "tournament";
     startLoadingMore(async () => {
       await fetchBroadcast(
         from,
         to,
-        isTournamentTab ? tournamentData.length : broadcastData.length,
-        sortKey,
+        isTournamentView ? tournamentData.length : broadcastData.length,
+        isTournamentView ? "broadcast" : broadcastView,
         true,
-        isTournamentTab ? festivalChannelIds : undefined,
+        isTournamentView ? festivalChannelIds : undefined,
       );
     });
   }
@@ -247,7 +260,7 @@ export function GameTopStreamers({
           active={active}
           onChange={handleTabChange}
         />
-        {(active === "broadcast" || active === "tournament") && (
+        {active === "broadcast" && (
           <DateFilterTab
             dateRange={dateRange}
             dayCount={dayCount}
@@ -272,159 +285,167 @@ export function GameTopStreamers({
         )}
       </div>
 
-      {active === "tournament" && festival ? (
+      {active === "broadcast" ? (
         <div className="space-y-3">
-          {(() => {
-            // channelId -> 조회된 방송시간 데이터 빠르게 찾기 위한 lookup
-            const dataByChannelId = new Map(
-              deferredTournamentData.map((e) => [e.channelId, e]),
-            );
-
-            if (isPending && deferredTournamentData.length === 0) {
+          {/* 방송시간순/평균시청자순/대회(있으면) 선택 — 눈에 잘 띄게 필박스 형태로 */}
+          <div className="inline-flex rounded-lg border border-border bg-muted/30 p-1">
+            {broadcastViewTabs.map((tab) => {
+              const isActive = broadcastView === tab.key;
+              const isTournamentTab = tab.key === "tournament";
               return (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
+                <button
+                  key={tab.key}
+                  onClick={() => handleBroadcastViewChange(tab.key)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? isTournamentTab
+                        ? "bg-amber-400 text-amber-950 shadow-sm"
+                        : "bg-primary text-primary-foreground shadow-sm"
+                      : isTournamentTab
+                        ? "text-amber-500 hover:text-amber-400"
+                        : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
               );
-            }
-
-            return (
-              <div
-                className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
-                  isTournamentStale ? "opacity-50 pointer-events-none" : ""
-                }`}
-              >
-                {festival.teams.map((team) => (
-                  <div
-                    key={team.teamName}
-                    className="rounded-lg border bg-card p-3"
-                  >
-                    <p className="mb-2 text-sm font-bold">{team.teamName}</p>
-                    <div className="divide-y">
-                      {team.members.map((member) => {
-                        const entry = dataByChannelId.get(member.channelId);
-                        return (
-                          <Link
-                            key={member.channelId}
-                            href={`/streamers/${member.channelId}`}
-                            className="flex items-center gap-2.5 py-2 transition-colors hover:bg-muted/50"
-                          >
-                            {entry?.channelImageUrl ? (
-                              <Image
-                                src={entry.channelImageUrl}
-                                alt={member.name}
-                                width={32}
-                                height={32}
-                                className="h-8 w-8 shrink-0 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
-                                {member.name[0]}
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <p className="truncate text-sm font-medium">
-                                  {member.name}
-                                </p>
-                                {member.isLeader && (
-                                  <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                                    팀장
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <p className="shrink-0 text-xs font-semibold text-muted-foreground">
-                              {entry
-                                ? formatDuration(entry.broadcastCount)
-                                : "방송 없음"}
-                            </p>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-      ) : active === "broadcast" ? (
-        <div className="space-y-3">
-          <div className="flex justify-end gap-3">
-            {sortTabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => handleSortChange(tab.key)}
-                className={`text-xs transition-colors ${
-                  sortKey === tab.key
-                    ? "text-primary border-b border-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            })}
           </div>
 
-          {(() => {
-            if (isPending && deferredData.length === 0) {
-              return (
-                <p className="text-sm text-muted-foreground">로딩 중...</p>
+          {broadcastView === "tournament" && festival ? (
+            (() => {
+              const dataByChannelId = new Map(
+                deferredTournamentData.map((e) => [e.channelId, e]),
               );
-            }
-            if (deferredData.length === 0) {
+
+              if (isPending && deferredTournamentData.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">로딩 중...</p>
+                );
+              }
+
               return (
-                <p className="text-sm text-muted-foreground">데이터 없음</p>
-              );
-            }
-            return (
-              <>
                 <div
-                  className={`divide-y rounded-lg border bg-card ${isStale ? "opacity-50 pointer-events-none" : ""}`}
+                  className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+                    isTournamentStale ? "opacity-50 pointer-events-none" : ""
+                  }`}
                 >
-                  {deferredData.map((entry: BroadcastEntry, i) => (
-                    <Link
-                      key={entry.channelId}
-                      href={`/streamers/${entry.channelId}`}
-                      className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+                  {festival.teams.map((team) => (
+                    <div
+                      key={team.teamName}
+                      className="rounded-lg border bg-card p-3"
                     >
-                      <RankBadge rank={i + 1} />
-                      {entry.channelImageUrl && (
-                        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                          <Image
-                            src={entry.channelImageUrl}
-                            alt={entry.channelName}
-                            width={40}
-                            height={40}
-                            className="object-cover w-full h-full"
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">
-                          {entry.channelName}
-                        </p>
+                      <p className="mb-2 text-sm font-bold">{team.teamName}</p>
+                      <div className="divide-y">
+                        {[...team.members]
+                          .sort(
+                            (a, b) =>
+                              ROLE_DISPLAY_ORDER.indexOf(a.role) -
+                              ROLE_DISPLAY_ORDER.indexOf(b.role),
+                          )
+                          .map((member) => {
+                            const entry = dataByChannelId.get(member.channelId);
+                            return (
+                              <Link
+                                key={member.channelId}
+                                href={`/streamers/${member.channelId}`}
+                                className="flex items-center gap-2.5 py-2 transition-colors hover:bg-muted/50"
+                              >
+                                {entry?.channelImageUrl ? (
+                                  <Image
+                                    src={entry.channelImageUrl}
+                                    alt={member.name}
+                                    width={32}
+                                    height={32}
+                                    className="h-8 w-8 shrink-0 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs text-muted-foreground">
+                                    {member.name[0]}
+                                  </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="truncate text-sm font-medium">
+                                      {member.name}
+                                    </p>
+                                    <span
+                                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${roleBadgeStyle[member.role]}`}
+                                    >
+                                      {member.role}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="shrink-0 text-xs font-semibold text-muted-foreground">
+                                  {entry
+                                    ? formatDuration(entry.broadcastCount)
+                                    : "방송 없음"}
+                                </p>
+                              </Link>
+                            );
+                          })}
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm font-bold">
-                          {formatDuration(entry.broadcastCount)}
-                        </p>
-                      </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
-
-                {hasMore && (
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={isLoadingMore}
-                    className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-50"
+              );
+            })()
+          ) : (
+            <>
+              {isPending && deferredData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">로딩 중...</p>
+              ) : deferredData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">데이터 없음</p>
+              ) : (
+                <>
+                  <div
+                    className={`divide-y rounded-lg border bg-card ${isStale ? "opacity-50 pointer-events-none" : ""}`}
                   >
-                    {isLoadingMore ? "로딩 중..." : "더 보기"}
-                  </button>
-                )}
-              </>
-            );
-          })()}
+                    {deferredData.map((entry: BroadcastEntry, i) => (
+                      <Link
+                        key={entry.channelId}
+                        href={`/streamers/${entry.channelId}`}
+                        className="flex items-center gap-3 p-3 transition-colors hover:bg-muted/50 md:gap-4 md:p-4"
+                      >
+                        <RankBadge rank={i + 1} />
+                        {entry.channelImageUrl && (
+                          <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                            <Image
+                              src={entry.channelImageUrl}
+                              alt={entry.channelName}
+                              width={40}
+                              height={40}
+                              className="object-cover w-full h-full"
+                            />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">
+                            {entry.channelName}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-bold">
+                            {formatDuration(entry.broadcastCount)}
+                          </p>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+
+                  {hasMore && (
+                    <button
+                      onClick={handleLoadMore}
+                      disabled={isLoadingMore}
+                      className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {isLoadingMore ? "로딩 중..." : "더 보기"}
+                    </button>
+                  )}
+                </>
+              )}
+            </>
+          )}
         </div>
       ) : list.length === 0 ? (
         <p className="text-sm text-muted-foreground">데이터 없음</p>
