@@ -417,6 +417,7 @@ export function StreamerTrendChart({ trendRows, liveTrendPoints = [] }: Props) {
       {isLive ? (
         <>
           <ChartLineDefault
+            key="live"
             title="오늘 실시간 시청자"
             description={
               liveTrendPoints.length > 0
@@ -469,6 +470,7 @@ export function StreamerTrendChart({ trendRows, liveTrendPoints = [] }: Props) {
       ) : (
         <>
           <ChartLineDefault
+            key={metric}
             title={
               selectedGameInfo ? `${selectedGameInfo.category} ` : `전체 게임 `
             }
