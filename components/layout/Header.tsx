@@ -1,10 +1,28 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
+
+const navItems = [
+  { label: "카테고리", href: "/games" },
+  { label: "스트리머", href: "/streamers" },
+  { label: "랭킹 레이스", href: "/race" },
+];
 
 export function Header() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
   return (
-    <header className="border-b px-4 md:px-8 h-14 flex items-center justify-between">
-      <Link href="/" className="flex items-center gap-2 font-bold text-lg">
+    <header className="relative border-b px-4 md:px-8 h-14 flex items-center justify-between">
+      <Link
+        href="/"
+        className="flex items-center gap-2 font-bold text-lg"
+        onClick={() => setOpen(false)}
+      >
         <Image
           src="/logo_square_accent.png"
           alt="StreamTrend"
@@ -14,100 +32,69 @@ export function Header() {
         />
         StreamTrend
       </Link>
-      <nav className="flex items-center gap-6">
-        <Link
-          href="/games"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          카테고리
-        </Link>
-        <Link
-          href="/streamers"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          스트리머
-        </Link>
-        {/* <Link
-          href="/watchparty"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          같이보기
-        </Link> */}
+
+      {/* 데스크톱: 가로 네비 */}
+      <nav className="hidden md:flex items-center gap-6">
+        {navItems.map((item) => {
+          const isActive = pathname?.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative pb-1 text-sm transition-colors ${
+                isActive
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {item.label}
+              {isActive && (
+                <span className="absolute inset-x-0 -bottom-[3px] h-0.5 rounded-full bg-primary" />
+              )}
+            </Link>
+          );
+        })}
       </nav>
+
+      {/* 모바일: 햄버거 버튼 */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="md:hidden flex h-9 w-9 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted"
+        aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
+        aria-expanded={open}
+      >
+        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
+      {/* 모바일: 드롭다운 메뉴 */}
+      {open && (
+        <>
+          {/* 바깥 클릭 시 닫힘 */}
+          <div
+            className="fixed inset-0 top-14 z-40 md:hidden"
+            onClick={() => setOpen(false)}
+          />
+          <nav className="absolute left-0 right-0 top-14 z-50 flex flex-col border-b bg-background p-2 shadow-lg md:hidden">
+            {navItems.map((item) => {
+              const isActive = pathname?.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`rounded-md px-3 py-2.5 text-sm transition-colors ${
+                    isActive
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
     </header>
   );
 }
-
-// "use client";
-
-// import Link from "next/link";
-// import { usePathname } from "next/navigation";
-
-// function LiveDot() {
-//   return (
-//     <span className="relative flex h-1.5 w-1.5 shrink-0">
-//       <span
-//         className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
-//         style={{ background: "var(--chart-2)" }}
-//       />
-//       <span
-//         className="relative inline-flex h-1.5 w-1.5 rounded-full"
-//         style={{ background: "var(--chart-2)" }}
-//       />
-//     </span>
-//   );
-// }
-
-// const navItems = [
-//   { label: "게임", href: "/games" },
-//   { label: "스트리머", href: "/streamers" },
-// ];
-
-// export function Header() {
-//   const pathname = usePathname();
-
-//   return (
-//     <header className="border-b px-4 md:px-8 h-14 flex items-center justify-between backdrop-blur-sm">
-//       <Link href="/" className="flex items-center gap-2">
-//         <span
-//           className="text-lg font-semibold"
-//           style={{
-//             backgroundImage:
-//               "linear-gradient(90deg, var(--chart-1), var(--chart-2))",
-//             WebkitBackgroundClip: "text",
-//             backgroundClip: "text",
-//             color: "transparent",
-//           }}
-//         >
-//           StreamTrend
-//         </span>
-//         <LiveDot />
-//       </Link>
-
-//       <nav className="flex items-center gap-6">
-//         {navItems.map((item) => {
-//           const isActive = pathname?.startsWith(item.href);
-//           return (
-//             <Link
-//               key={item.href}
-//               href={item.href}
-//               className={`relative pb-1 text-sm transition-colors ${
-//                 isActive
-//                   ? "text-foreground"
-//                   : "text-muted-foreground hover:text-foreground"
-//               }`}
-//             >
-//               {item.label}
-//               {isActive && (
-//                 <span
-//                   className="absolute inset-x-0 -bottom-[3px] h-0.5 rounded-full"
-//                   style={{ background: "var(--chart-1)" }}
-//                 />
-//               )}
-//             </Link>
-//           );
-//         })}
-//       </nav>
-//     </header>
-//   );
-// }

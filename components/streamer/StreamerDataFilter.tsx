@@ -221,6 +221,7 @@ export function StreamerDateFilter({ rows }: Props) {
           <div className="h-5 w-px bg-white/10" />
 
           <DateRangePicker
+            mode="range"
             value={customRange}
             onChange={(range) => {
               setCustomRange(range);
