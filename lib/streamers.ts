@@ -24,15 +24,21 @@ function parseTopGames(raw: RawStreamer[]): Streamer[] {
   }));
 }
 
-const sevenDaysAgo = () => {
+// 하루 단위로 고정된 "7일 전" 날짜 문자열. 같은 날 안에서는 항상 동일한 값이라
+// 캐시 키가 안정적으로 유지되고, 자정이 지나야만 새로 계산됨.
+function sevenDaysAgoDateString(): string {
   const d = new Date();
   d.setDate(d.getDate() - 7);
-  return d;
-};
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10); // "2026-09-01"
+}
 
-async function getStreamersByNames(names: string[]): Promise<Streamer[]> {
+async function getStreamersByNames(
+  names: string[],
+  agoDateStr: string, // ← 캐시 함수 밖에서 계산된 값을 인자로 받음
+): Promise<Streamer[]> {
   if (names.length === 0) return [];
-  const ago = sevenDaysAgo();
+  const ago = new Date(agoDateStr);
 
   const result = await prisma.$queryRaw<RawStreamer[]>`
     SELECT
@@ -45,15 +51,15 @@ async function getStreamersByNames(names: string[]): Promise<Streamer[]> {
       COALESCE((
         SELECT STRING_AGG(g."liveCategoryValue", '||' ORDER BY g.cnt DESC)
         FROM (
-    SELECT "liveCategoryValue", SUM("broadcastCount") as cnt
-FROM "StreamerDailySummary"
-WHERE "channelId" = s."channelId"
-  AND "date" >= ${ago}
-  AND "liveCategoryValue" IS NOT NULL
-  AND "liveCategoryValue" != ''
-GROUP BY "liveCategoryValue"
-ORDER BY cnt DESC
-LIMIT 3
+          SELECT "liveCategoryValue", SUM("broadcastCount") as cnt
+          FROM "StreamerDailySummary"
+          WHERE "channelId" = s."channelId"
+            AND "date" >= ${ago}
+            AND "liveCategoryValue" IS NOT NULL
+            AND "liveCategoryValue" != ''
+          GROUP BY "liveCategoryValue"
+          ORDER BY cnt DESC
+          LIMIT 3
         ) g
       ), '') AS "topGames"
     FROM "Streamer" s
@@ -70,7 +76,8 @@ LIMIT 3
 export async function getPartnerStreamers(): Promise<Streamer[]> {
   "use cache";
   cacheLife(STREAMER_CACHE);
-  const ago = sevenDaysAgo();
+  const agoDateStr = sevenDaysAgoDateString(); // 캐시 함수 안에서 호출하지만, 결과가 "하루 단위 문자열"이라 사실상 안정적
+  const ago = new Date(agoDateStr);
 
   const result = await prisma.$queryRaw<RawStreamer[]>`
     SELECT
@@ -83,15 +90,15 @@ export async function getPartnerStreamers(): Promise<Streamer[]> {
       COALESCE((
         SELECT STRING_AGG(g."liveCategoryValue", '||' ORDER BY g.cnt DESC)
         FROM (
-   SELECT "liveCategoryValue", SUM("broadcastCount") as cnt
-FROM "StreamerDailySummary"
-WHERE "channelId" = s."channelId"
-  AND "date" >= ${ago}
-  AND "liveCategoryValue" IS NOT NULL
-  AND "liveCategoryValue" != ''
-GROUP BY "liveCategoryValue"
-ORDER BY cnt DESC
-LIMIT 3
+          SELECT "liveCategoryValue", SUM("broadcastCount") as cnt
+          FROM "StreamerDailySummary"
+          WHERE "channelId" = s."channelId"
+            AND "date" >= ${ago}
+            AND "liveCategoryValue" IS NOT NULL
+            AND "liveCategoryValue" != ''
+          GROUP BY "liveCategoryValue"
+          ORDER BY cnt DESC
+          LIMIT 3
         ) g
       ), '') AS "topGames"
     FROM "Streamer" s
@@ -108,13 +115,15 @@ LIMIT 3
 export async function getMCNStreamers(mcn: MCNKey): Promise<Streamer[]> {
   "use cache";
   cacheLife(STREAMER_CACHE);
-  return getStreamersByNames([...MCN_GROUPS[mcn]]);
+  const agoDateStr = sevenDaysAgoDateString();
+  return getStreamersByNames([...MCN_GROUPS[mcn]], agoDateStr);
 }
 
 export async function getGroupStreamers(group: GroupKey): Promise<Streamer[]> {
   "use cache";
   cacheLife(STREAMER_CACHE);
-  return getStreamersByNames([...GROUPS[group]]);
+  const agoDateStr = sevenDaysAgoDateString();
+  return getStreamersByNames([...GROUPS[group]], agoDateStr);
 }
 
 export async function getMissingStreamers(mcn: MCNKey) {
