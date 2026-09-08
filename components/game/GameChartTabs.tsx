@@ -179,7 +179,11 @@ export function GameChartTabs({
 
             <div className="h-5 w-px bg-white/10" />
 
-            <DateRangePicker value={dateRange} onChange={setDateRange} />
+            <DateRangePicker
+              mode="range"
+              value={dateRange}
+              onChange={setDateRange}
+            />
           </div>
         </div>
       </div>
