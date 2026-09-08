@@ -74,7 +74,7 @@ export function DateFilterTab({
 
       <div className="h-5 w-px bg-white/10" />
 
-      <DateRangePicker value={dateRange} onChange={handlePicker} />
+      <DateRangePicker mode="range" value={dateRange} onChange={handlePicker} />
     </div>
   );
 }
