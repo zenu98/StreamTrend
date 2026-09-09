@@ -609,7 +609,10 @@ export function TrendingGame({ livePromise, byMax, byScore }: Props) {
         ))}
       </div>
       <Notice className="mx-auto">
-        2026년 09월 09일 치지직 클라이언트 키가 삭제되어 복구작업에 있습니다.
+        2026년 8월 6일부터 집계하는 LCK, EWC 등 대회 중계 관련 같이보기 방송은
+        게임 랭킹·스트리머 랭킹 집계에서 제외됩니다. <br />
+        실제 게임을 플레이하는 스트리머의 시청자만 게임 랭킹과 통계에 반영되며,
+        같이보기 시청자는 해당 스트리머의 개인 기록에만 남게됩니다.
       </Notice>
       {isLive ? (
         <Suspense
