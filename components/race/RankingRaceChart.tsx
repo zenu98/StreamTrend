@@ -289,6 +289,11 @@ export function RankingRaceChart({ entity }: Props) {
       }
 
       if (progressLocal >= data.length - 1) {
+        const finalRanks = new Map<string, number>();
+        list.forEach((entry, targetRank) => {
+          finalRanks.set(entry.id, targetRank);
+        });
+        setSmoothedRanks(finalRanks);
         setIsPlaying(false);
         return;
       }
