@@ -15,6 +15,7 @@ import { Suspense } from "react";
 import { TrendingGame } from "@/components/main/TrendingGame";
 import { TrendingStreamer } from "@/components/main/TrendingStreamer";
 import { Notice } from "@/components/shared/Notice";
+import { TopStreamersTrendChart } from "@/components/streamer/TopStreamersTrendChart";
 
 export default function Home() {
   return (
@@ -50,6 +51,7 @@ async function HomeContent() {
         streamers={topStreamers}
         liveStreamerPromise={liveStreamerPromise}
       />
+      <TopStreamersTrendChart />
     </div>
   );
 }
