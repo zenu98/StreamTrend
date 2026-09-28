@@ -51,7 +51,7 @@ async function StreamerDetail({
   const { id } = await paramsPromise;
 
   const [
-    { today, channelInfo },
+    { today, channelInfo, weeklyAvgViewers },
     allRows,
     topRecordsData,
     trendRows,
@@ -100,6 +100,7 @@ async function StreamerDetail({
             count: d.count,
             totalViewers: d.totalViewers,
           }))}
+          weeklyAvgViewers={weeklyAvgViewers}
         />
       </section>
 

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { BROADCAST_CHANNEL_IDS } from "./data/channel";
+import { BROADCAST_CHANNEL_IDS } from "./data/channel"; // 실제 경로에 맞게 조정
 
 export type Granularity = "day" | "week" | "month" | "quarter" | "year";
 export type Entity = "game" | "streamer";
@@ -10,31 +10,29 @@ export type RaceEntry = {
   name: string;
   imageUrl: string | null;
   value: number;
+  category?: string;
+  liveTitle?: string;
 };
 
 export type RaceFrame = {
-  period: string; // 예: "2025-Q1", "2025-03", "2025-03-10 주", "2025"
-  entries: RaceEntry[]; // 점수 내림차순, 상위 N개
+  period: string;
+  entries: RaceEntry[];
 };
 
 type Params = {
-  from: string; // 'YYYY-MM-DD'
-  to: string; // 'YYYY-MM-DD'
+  from: string;
+  to: string;
   granularity: Granularity;
   metric?: Metric;
   topN?: number;
   includeTournaments?: boolean;
 };
 
-// 지표별로 구간을 어떻게 뭉칠지: avgViewers는 하루하루를 더하는 게 자연스럽고(총량 개념),
-// maxViewers는 더하면 의미가 이상해져서 구간 내 최댓값(MAX) 하나만 뽑음.
 const METRIC_AGG: Record<Metric, "SUM" | "MAX"> = {
   avgViewers: "SUM",
   maxViewers: "MAX",
 };
 
-// granularity별 기간 라벨 SQL. 고정 맵에서만 선택되므로 SQL 인젝션 걱정 없음.
-// date가 DateTime(06:00 기준 하루 단위) 컬럼이라 별도 캐스팅 없이 바로 씀.
 const GRANULARITY_EXPR: Record<Granularity, string> = {
   day: `to_char(date, 'YYYY-MM-DD')`,
   week: `to_char(date_trunc('week', date), 'YYYY-MM-DD') || ' 주'`,
@@ -43,22 +41,30 @@ const GRANULARITY_EXPR: Record<Granularity, string> = {
   year: `to_char(date, 'YYYY')`,
 };
 
+type CategoryInfo = { category: string; liveTitle: string };
+
 function buildFrames(
   rows: { period: string; key: string; score: number }[],
   lookup: Map<string, { name: string; imageUrl: string | null }>,
+  categoryLookup: Map<string, CategoryInfo> | null,
   topN: number,
 ): RaceFrame[] {
   const byPeriod = new Map<string, RaceEntry[]>();
 
   for (const row of rows) {
     const info = lookup.get(row.key);
-    if (!info) continue; // 아직 이름/이미지 정보가 없는 경우 스킵
+    if (!info) continue;
+
+    const categoryKey = `${row.period}::${row.key}`;
+    const categoryInfo = categoryLookup?.get(categoryKey);
 
     const entry: RaceEntry = {
       id: row.key,
       name: info.name,
       imageUrl: info.imageUrl,
       value: row.score,
+      category: categoryInfo?.category,
+      liveTitle: categoryInfo?.liveTitle,
     };
     const list = byPeriod.get(row.period) ?? [];
     list.push(entry);
@@ -66,14 +72,13 @@ function buildFrames(
   }
 
   return [...byPeriod.entries()]
-    .sort(([a], [b]) => a.localeCompare(b)) // 기간 오름차순
+    .sort(([a], [b]) => a.localeCompare(b))
     .map(([period, entries]) => ({
       period,
       entries: entries.sort((a, b) => b.value - a.value).slice(0, topN),
     }));
 }
 
-/** 게임(카테고리)별 분기 랭킹 — 지표(avgViewers/maxViewers) 기준 */
 export async function getGameRankingRace({
   from,
   to,
@@ -128,7 +133,6 @@ export async function getGameRankingRace({
     ]),
   );
 
-  // DB에서 이미 topN만 걸러왔으니 buildFrames의 slice는 그대로 안전망으로 유지
   return buildFrames(
     rows.map((r) => ({
       period: r.period,
@@ -136,24 +140,27 @@ export async function getGameRankingRace({
       score: r.score,
     })),
     lookup,
+    null, // 게임 레이스는 카테고리/제목 불필요
     topN,
   );
 }
 
-/**
- * 스트리머별 분기 랭킹 — 지표(avgViewers/maxViewers) 기준.
- * 게임 구분 없이 그 스트리머의 모든 방송을 합산/최댓값 계산함.
- */
 export async function getStreamerRankingRace({
   from,
   to,
   granularity,
   metric = "avgViewers",
   topN = 15,
-  includeTournaments = false, // 다른 화면과 기본값 통일
+  includeTournaments = false,
 }: Params): Promise<RaceFrame[]> {
   const periodExpr = GRANULARITY_EXPR[granularity];
-  const aggFn = METRIC_AGG[metric];
+
+  // avgViewers: 방송 횟수(틱 수)로 가중평균 -> 카테고리를 여러 개 탄 날에도 왜곡 없음
+  // maxViewers: 그대로 최댓값
+  const scoreExpr =
+    metric === "avgViewers"
+      ? `SUM("totalViewers")::float / NULLIF(SUM("broadcastCount"), 0)`
+      : `MAX("maxViewers")::float`;
 
   const excludeClause = includeTournaments
     ? ""
@@ -167,10 +174,10 @@ export async function getStreamerRankingRace({
         SELECT
           ${periodExpr} AS period,
           "channelId" AS "channelId",
-          ${aggFn}("${metric}")::float AS score,
+          ${scoreExpr} AS score,
           ROW_NUMBER() OVER (
             PARTITION BY ${periodExpr}
-            ORDER BY ${aggFn}("${metric}") DESC
+            ORDER BY ${scoreExpr} DESC
           ) AS rn
         FROM "StreamerDailySummary"
         WHERE date >= $1::date
@@ -191,9 +198,9 @@ export async function getStreamerRankingRace({
 
   if (rows.length === 0) return [];
 
-  const ids = [...new Set(rows.map((r) => r.channelId))];
+  const channelIds = [...new Set(rows.map((r) => r.channelId))];
   const streamers = await prisma.streamer.findMany({
-    where: { channelId: { in: ids } },
+    where: { channelId: { in: channelIds } },
     select: { channelId: true, channelName: true, channelImageUrl: true },
   });
   const lookup = new Map(
@@ -203,9 +210,40 @@ export async function getStreamerRankingRace({
     ]),
   );
 
+  // (period, channelId) 조합별로, 그 기간 안에서 시청자가 가장 많았던 카테고리/방송제목
+  // DISTINCT ON은 period가 day가 아닌 경우(week/month 등) 하루 단위로 여러 행이 뭉치므로
+  // 그 기간 전체에서 totalViewers가 가장 큰 행 하나를 대표로 뽑음.
+  const categoryRows = await prisma.$queryRawUnsafe<
+    { period: string; channelId: string; category: string; liveTitle: string }[]
+  >(
+    `
+      SELECT DISTINCT ON (${periodExpr}, "channelId")
+        ${periodExpr} AS period,
+        "channelId",
+        "liveCategoryValue" AS category,
+        "liveTitle"
+      FROM "StreamerDailySummary"
+      WHERE "channelId" = ANY($1::text[])
+        AND date >= $2::date
+        AND date < ($3::date + interval '1 day')
+      ORDER BY ${periodExpr}, "channelId", "totalViewers" DESC
+    `,
+    channelIds,
+    from,
+    to,
+  );
+
+  const categoryLookup = new Map<string, CategoryInfo>(
+    categoryRows.map((r) => [
+      `${r.period}::${r.channelId}`,
+      { category: r.category, liveTitle: r.liveTitle },
+    ]),
+  );
+
   return buildFrames(
     rows.map((r) => ({ period: r.period, key: r.channelId, score: r.score })),
     lookup,
+    categoryLookup,
     topN,
   );
 }

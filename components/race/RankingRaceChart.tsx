@@ -81,7 +81,9 @@ type ValueEntry = {
   name: string;
   imageUrl: string | null;
   value: number;
-  presence: number; // 0~1, 등장/퇴장 페이드용
+  presence: number;
+  category?: string;
+  liveTitle?: string;
 };
 
 // data/progress/entityMeta로부터 "지금 이 순간" 각 항목의 보간된 값을 계산해서
@@ -97,32 +99,35 @@ function computeInterpolatedList(
   const i1 = Math.min(i0 + 1, data.length - 1);
   const t = progress - i0;
 
-  const values0 = new Map(data[i0].entries.map((e) => [e.id, e.value]));
-  const values1 = new Map(data[i1].entries.map((e) => [e.id, e.value]));
-  const ids = new Set([...values0.keys(), ...values1.keys()]);
+  const entries0 = new Map(data[i0].entries.map((e) => [e.id, e]));
+  const entries1 = new Map(data[i1].entries.map((e) => [e.id, e]));
+  const ids = new Set([...entries0.keys(), ...entries1.keys()]);
 
   const result: ValueEntry[] = [];
   for (const id of ids) {
-    const v0 = values0.get(id);
-    const v1 = values1.get(id);
+    const e0 = entries0.get(id);
+    const e1 = entries1.get(id);
     const meta = entityMeta.get(id);
     if (!meta) continue;
 
     let value: number;
     let presence: number;
 
-    if (v0 != null && v1 != null) {
-      value = v0 + (v1 - v0) * t;
+    if (e0 != null && e1 != null) {
+      value = e0.value + (e1.value - e0.value) * t;
       presence = 1;
-    } else if (v0 != null) {
-      value = v0 * (1 - t); // 다음 구간엔 순위 밖 -> 서서히 줄며 퇴장
+    } else if (e0 != null) {
+      value = e0.value * (1 - t);
       presence = 1 - t;
-    } else if (v1 != null) {
-      value = v1 * t; // 이번 구간에 새로 진입 -> 서서히 등장
+    } else if (e1 != null) {
+      value = e1.value * t;
       presence = t;
     } else {
       continue;
     }
+
+    // 진행 방향(t가 0.5 미만이면 이전 구간, 이상이면 다음 구간)의 정보를 표시용으로 사용
+    const displaySource = t < 0.5 ? (e0 ?? e1) : (e1 ?? e0);
 
     result.push({
       id,
@@ -130,6 +135,8 @@ function computeInterpolatedList(
       imageUrl: meta.imageUrl,
       value,
       presence,
+      category: displaySource?.category,
+      liveTitle: displaySource?.liveTitle,
     });
   }
 
@@ -666,12 +673,26 @@ export function RankingRaceChart({ entity }: Props) {
                           className="aspect-3/4 shrink-0 rounded object-cover"
                         />
                       )}
-                      <span
-                        className="truncate text-sm font-medium"
-                        title={entry.name}
-                      >
-                        {entry.name}
-                      </span>
+                      <div className="min-w-0">
+                        <span
+                          className="block truncate text-sm font-medium"
+                          title={entry.name}
+                        >
+                          {entry.name}
+                        </span>
+                        {(entry.category || entry.liveTitle) && (
+                          <span
+                            className="block truncate text-[11px] text-muted-foreground"
+                            title={[entry.category, entry.liveTitle]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          >
+                            {[entry.category, entry.liveTitle]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* 막대: 이 트랙 안에서만 값에 비례해 늘었다 줄었다 함.

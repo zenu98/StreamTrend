@@ -1,4 +1,4 @@
-import { Users, Clock, Radio } from "lucide-react";
+import { Users, Clock, Radio, TrendingUp } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
 const tierGradients: Record<string, string> = {
@@ -26,15 +26,16 @@ function GradientNumber({ value, tier }: { value: string; tier?: string }) {
 type TodayGame = {
   category: string;
   categoryId: string;
-  count: number; // 5분 틱 개수
+  count: number;
   totalViewers: number;
 };
 
 type Props = {
   todayGames: TodayGame[];
+  weeklyAvgViewers: number;
 };
 
-export function StreamerCurrentStats({ todayGames }: Props) {
+export function StreamerCurrentStats({ todayGames, weeklyAvgViewers }: Props) {
   const sorted = [...todayGames].sort((a, b) => b.count - a.count);
   const totalCount = sorted.reduce((sum, g) => sum + g.count, 0);
   const totalViewersSum = sorted.reduce((sum, g) => sum + g.totalViewers, 0);
@@ -43,8 +44,29 @@ export function StreamerCurrentStats({ todayGames }: Props) {
 
   return (
     <div className="w-full min-w-0 max-w-full rounded-2xl border bg-card px-5 py-4 sm:w-fit sm:min-w-[50%]">
-      <div className="flex flex-col  md:gap-6 md:flex-row md:items-stretch">
-        <div className="flex shrink-0 flex-col ">
+      <div className="flex flex-col md:gap-6 md:flex-row md:items-stretch">
+        <div className="flex shrink-0 flex-col">
+          <p className="mb-0.5 mt-2.5 md:mt-0 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" />
+            <span>최근 7일 평균 시청자</span>
+          </p>
+          <div className="flex flex-1 items-center md:justify-center">
+            <p className="whitespace-nowrap text-4xl font-semibold">
+              <GradientNumber
+                value={weeklyAvgViewers.toLocaleString()}
+                tier="B"
+              />
+              <span className="ml-0.5 text-sm font-normal text-muted-foreground">
+                명
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden w-px self-stretch bg-border md:block" />
+        <div className="h-px bg-border md:hidden" />
+
+        <div className="flex shrink-0 flex-col">
           <p className="mb-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
             <Users className="h-3.5 w-3.5" />
             <span>오늘 평균 시청자</span>

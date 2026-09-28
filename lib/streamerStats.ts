@@ -135,7 +135,15 @@ export async function getStreamerStats(channelId: string) {
       select: { channelName: true, channelImageUrl: true },
     }),
   ]);
-
+  const weeklyTotalViewers = rows7.reduce((sum, r) => sum + r.totalViewers, 0);
+  const weeklyBroadcastCount = rows7.reduce(
+    (sum, r) => sum + r.broadcastCount,
+    0,
+  );
+  const weeklyAvgViewers =
+    weeklyBroadcastCount > 0
+      ? Math.round(weeklyTotalViewers / weeklyBroadcastCount)
+      : 0;
   // 7일: 게임별 합산
   const map7 = new Map<
     string,
@@ -206,7 +214,7 @@ export async function getStreamerStats(channelId: string) {
     }))
     .sort((a, b) => b.totalViewers - a.totalViewers);
 
-  return { today, weekly, monthly, channelInfo };
+  return { today, weekly, monthly, channelInfo, weeklyAvgViewers };
 }
 
 export async function getStreamerAllStats(channelId: string) {

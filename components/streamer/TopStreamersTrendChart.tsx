@@ -224,7 +224,7 @@ export function TopStreamersTrendChart() {
   }
 
   if (isLoading) {
-    return <div className="h-[560px] animate-pulse rounded-lg bg-white/5" />;
+    return <div className="h-140 animate-pulse rounded-lg bg-white/5" />;
   }
   if (points.length === 0) {
     return (
@@ -297,7 +297,7 @@ export function TopStreamersTrendChart() {
               return (
                 <Line
                   key={s.channelId}
-                  type="monotone"
+                  type="basis"
                   dataKey={s.channelId}
                   stroke={COLORS[i]}
                   strokeWidth={2}
