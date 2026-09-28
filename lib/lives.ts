@@ -38,7 +38,10 @@ export async function getLives() {
   const collectedAt = latest.collectedAt.toISOString();
 
   // 게임: LCK 제외 + watchparty 제외
-  const gameFiltered = snapshots.filter((s) => !isSportsBroadcast(s));
+  const gameFiltered = snapshots.filter((s) => {
+    if (s.categoryType !== "GAME") return true; // 애니메이션 등은 그대로 통과
+    return !isSportsBroadcast(s);
+  });
 
   // 같이보기: SPORTS + 특정채널 + watchparty
   const sportsFiltered = snapshots.filter(
