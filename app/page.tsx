@@ -16,6 +16,7 @@ import { TrendingGame } from "@/components/main/TrendingGame";
 import { TrendingStreamer } from "@/components/main/TrendingStreamer";
 import { Notice } from "@/components/shared/Notice";
 import { TopStreamersTrendChart } from "@/components/streamer/TopStreamersTrendChart";
+import { AnimeSection } from "./games/[category]/page";
 
 export default function Home() {
   return (
@@ -52,6 +53,12 @@ async function HomeContent() {
         liveStreamerPromise={liveStreamerPromise}
       />
       <TopStreamersTrendChart />
+
+      <Suspense
+        fallback={<div className="h-48 animate-pulse rounded-2xl bg-white/5" />}
+      >
+        <AnimeSection compact />
+      </Suspense>
     </div>
   );
 }

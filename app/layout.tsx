@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Anton } from "next/font/google";
+import { Geist, Geist_Mono, Anton, Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Analytics } from "@vercel/analytics/next";
@@ -13,6 +13,11 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+const notoSansKR = Noto_Sans_KR({
+  variable: "--font-noto-kr",
+  subsets: ["latin"], // Noto Sans KR은 subset 이름이 다를 수 있어 확인 필요
+  weight: ["400", "500", "600", "700"],
 });
 
 const anton = Anton({
@@ -85,7 +90,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} h-full antialiased`}
+      className={`dark ${geistSans.variable} ${geistMono.variable} ${anton.variable} ${notoSansKR.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col ">
         <Header />

@@ -18,6 +18,8 @@ import { getTodayLabel, toKSTDateString } from "@/lib/utils";
 import type { Metadata } from "next";
 import { get7DaysAllGames } from "@/lib/stats";
 import { GameScoreCard } from "@/components/game/GameScoreCard";
+import { getAnimeSummaries } from "@/lib/animeStats";
+import { AnimeSummaryCards } from "@/components/shared/AnimeSummaryCard";
 
 export async function generateMetadata({
   params,
@@ -78,6 +80,7 @@ async function GameDetail({
     getGameTopStreamers(categoryId),
     get7DaysAllGames(),
   ]);
+
   return (
     <main className="p-4  mx-auto w-full  space-y-8 ">
       {/* 헤더 */}
@@ -102,6 +105,15 @@ async function GameDetail({
       </div>
 
       <section className="flex-col space-y-4">
+        {categoryId === "animation" && (
+          <Suspense
+            fallback={
+              <div className="h-48 animate-pulse rounded-2xl bg-white/5" />
+            }
+          >
+            <AnimeSection />
+          </Suspense>
+        )}
         {/* <h2 className="text-lg md:text-xl font-bold">현재</h2> */}
         {!stats.isNonGame && (
           <GameScoreCard
@@ -184,4 +196,8 @@ async function GameDetail({
       </section>
     </main>
   );
+}
+export async function AnimeSection({ compact = false }: { compact?: boolean }) {
+  const summaries = await getAnimeSummaries();
+  return <AnimeSummaryCards summaries={summaries} compact={compact} />;
 }

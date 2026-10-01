@@ -252,7 +252,7 @@ export function TopStreamersTrendChart() {
           상위 스트리머 차트
         </h1>
       </div>
-      <div className="relative h-[560px] w-full">
+      <div className="relative h-140 min-h-140 w-full">
         <ResponsiveContainer>
           <LineChart
             data={points}
