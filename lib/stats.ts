@@ -404,21 +404,45 @@ export async function get7DaysAllGames() {
     dailyViewers: d.dailyViewers,
   }));
 
-  const sortedByViewers = [...allGames].sort(
-    (a, b) => b.concurrentViewers - a.concurrentViewers,
-  );
-  const sortedByBroadcast = [...allGames].sort(
-    (a, b) => b.broadcastCount - a.broadcastCount,
-  );
-  const maxViewers = sortedByViewers[0]?.concurrentViewers || 1;
-  const maxBroadcast = sortedByBroadcast[0]?.broadcastCount || 1;
+  // 상위 N개 게임의 평균값을 기준으로 삼아 "50점 기준선"을 정함.
+  // 죽은 카테고리가 압도적으로 많아(median/percentile이 바닥에 깔림),
+  // 1등 기준 비율(sqrt(x/1등))로는 2등부터 급락하고,
+  // median/percentile 기준으로는 거의 모든 게임이 고득점으로 몰리는 문제가 있어
+  // "실제로 경쟁력 있는 상위권 게임들의 평균"을 기준점으로 씀.
+  const TOP_N = 20;
+  const REFERENCE_RATIO = 0.3;
+
+  function topAverage(values: number[], topN: number): number {
+    const sorted = [...values].sort((a, b) => b - a);
+    const top = sorted.slice(0, topN);
+    if (top.length === 0) return 1;
+    return top.reduce((sum, v) => sum + v, 0) / top.length;
+  }
+
+  function hyperbolicScore(value: number, reference: number): number {
+    if (reference <= 0) return value > 0 ? 100 : 1;
+    return Math.round((100 * value) / (value + reference));
+  }
+
+  const viewerReference =
+    topAverage(
+      allGames.map((g) => g.concurrentViewers),
+      TOP_N,
+    ) * REFERENCE_RATIO;
+  const broadcastReference =
+    topAverage(
+      allGames.map((g) => g.broadcastCount),
+      TOP_N,
+    ) * REFERENCE_RATIO;
 
   const withScore = allGames.map((g) => {
-    const viewerPercentile = Math.round(
-      (Math.sqrt(g.concurrentViewers) / Math.sqrt(maxViewers)) * 100,
+    const viewerPercentile = hyperbolicScore(
+      g.concurrentViewers,
+      viewerReference,
     );
-    const countPercentile = Math.round(
-      (Math.sqrt(g.broadcastCount) / Math.sqrt(maxBroadcast)) * 100,
+    const countPercentile = hyperbolicScore(
+      g.broadcastCount,
+      broadcastReference,
     );
 
     const days = g.dailyViewers;

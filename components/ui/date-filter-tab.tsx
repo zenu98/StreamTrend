@@ -11,7 +11,6 @@ const DEFAULT_PRESETS: Preset[] = [
   { label: "7일", days: 7 },
   { label: "14일", days: 14 },
   { label: "30일", days: 30 },
-  { label: "90일", days: 90 },
 ];
 
 type Props = {

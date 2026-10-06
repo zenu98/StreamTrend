@@ -20,8 +20,8 @@ export function getScoreRingColor(score: number): string {
  */
 export function getScoreGradientColors(score: number): [string, string] {
   if (score >= 70) return ["#f59e0b", "#1bb373"];
-  if (score >= 40) return ["#e24b4a", "#f59e0b"];
-  return ["#e24b4a", "#f97316"];
+  if (score >= 40) return ["#00ce7a", "#60a5fa"];
+  return ["#e24b4a", "#f59e0b"];
 }
 
 /** 하락세/유지/상승세 3구간 공용 색상 (빨강/주황/초록) */

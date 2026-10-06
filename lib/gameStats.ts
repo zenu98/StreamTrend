@@ -3,6 +3,7 @@ import { cacheLife } from "next/cache";
 import { getLives } from "./lives";
 import { toKSTDateString } from "./utils";
 import { BROADCAST_CHANNEL_IDS } from "./data/channel";
+
 export async function getGameCategoryInfo(categoryId: string) {
   "use cache";
   cacheLife("statsTime");
@@ -413,4 +414,138 @@ export async function getGameTopStreamers(categoryId: string) {
     topChannels: topChannelsRaw.map(toEntry),
     defaultDisplayLimit: DEFAULT_DISPLAY_LIMIT,
   };
+}
+
+export type GameRankingEntry = {
+  categoryId: string;
+  category: string;
+  posterImageUrl: string | null;
+  avgViewers: number;
+  broadcastCount: number;
+  maxViewers: number; // 카테고리 전체 합산 동시시청자 최고치
+  peakViewers: number; // 1인 방송 기준 최고 시청자
+  totalScore: number;
+};
+
+const DEFAULT_RANKING_LIMIT = 100;
+const MAX_RANKING_LIMIT = 200;
+
+export async function getGameRanking(
+  from: Date,
+  to: Date,
+  limit: number = DEFAULT_RANKING_LIMIT,
+): Promise<GameRankingEntry[]> {
+  "use cache";
+  cacheLife("statsTime");
+
+  const safeLimit = Math.min(Math.max(1, limit), MAX_RANKING_LIMIT);
+  const [rows, categories, streamerDayCounts] = await Promise.all([
+    prisma.dailySummary.findMany({
+      where: { date: { gte: from, lt: to }, categoryType: "GAME" },
+    }),
+    prisma.category.findMany({
+      select: { categoryId: true, categoryValue: true, posterImageUrl: true },
+    }),
+    // 행 하나 = "그 날, 그 채널이 그 카테고리를 방송함" 이므로 그냥 카테고리별 행 개수를 셈
+    prisma.streamerDailySummary.groupBy({
+      by: ["liveCategory"],
+      where: { date: { gte: from, lt: to }, categoryType: "GAME" },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const streamerDayCountMap = new Map(
+    streamerDayCounts.map((r) => [r.liveCategory, r._count._all]),
+  );
+
+  const posterMap = new Map(categories.map((c) => [c.categoryId, c]));
+
+  const categoryMap = new Map<
+    string,
+    {
+      liveCategory: string;
+      liveCategoryValue: string;
+      totalViewers: number;
+      snapshotCount: number;
+      maxViewers: number;
+      peakViewers: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const key = row.liveCategory;
+    const prev = categoryMap.get(row.liveCategoryValue) ?? {
+      liveCategory: row.liveCategory,
+      liveCategoryValue: row.liveCategoryValue,
+      totalViewers: 0,
+      snapshotCount: 0,
+      maxViewers: 0,
+      peakViewers: 0,
+    };
+    categoryMap.set(key, {
+      ...prev,
+      totalViewers: prev.totalViewers + row.totalViewers,
+      snapshotCount: prev.snapshotCount + row.snapshotCount,
+      maxViewers: Math.max(prev.maxViewers, row.maxViewers),
+      peakViewers: Math.max(prev.peakViewers, row.peakViewers),
+    });
+  }
+
+  const allGames = [...categoryMap.values()].map((d) => ({
+    categoryId: d.liveCategory,
+    category:
+      posterMap.get(d.liveCategory)?.categoryValue ?? d.liveCategoryValue,
+    posterImageUrl: posterMap.get(d.liveCategory)?.posterImageUrl ?? null,
+    avgViewers:
+      d.snapshotCount > 0 ? Math.round(d.totalViewers / d.snapshotCount) : 0,
+    broadcastCount: streamerDayCountMap.get(d.liveCategory) ?? 0, // ← 변경
+    maxViewers: d.maxViewers,
+    peakViewers: d.peakViewers,
+  }));
+
+  // ...이하 topAverage/hyperbolicScore 로직은 그대로
+  // (주의: broadcastCount 기준 topAverage/reference도 이제 "스트리머-일수" 단위로 계산됨)
+
+  const TOP_N = 20;
+  const REFERENCE_RATIO = 0.3;
+
+  function topAverage(values: number[], topN: number): number {
+    const sorted = [...values].sort((a, b) => b - a);
+    const top = sorted.slice(0, topN);
+    if (top.length === 0) return 1;
+    return top.reduce((sum, v) => sum + v, 0) / top.length;
+  }
+
+  function hyperbolicScore(value: number, reference: number): number {
+    if (reference <= 0) return value > 0 ? 100 : 1;
+    return Math.round((100 * value) / (value + reference));
+  }
+
+  const viewerReference =
+    topAverage(
+      allGames.map((g) => g.avgViewers),
+      TOP_N,
+    ) * REFERENCE_RATIO;
+  const broadcastReference =
+    topAverage(
+      allGames.map((g) => g.broadcastCount),
+      TOP_N,
+    ) * REFERENCE_RATIO;
+
+  const withScore = allGames.map((g) => {
+    const viewerScore = hyperbolicScore(g.avgViewers, viewerReference);
+    const countScore = hyperbolicScore(g.broadcastCount, broadcastReference);
+    return {
+      ...g,
+      totalScore: Math.max(1, Math.round(viewerScore * 0.6 + countScore * 0.4)),
+    };
+  });
+
+  return withScore
+    .sort((a, b) => {
+      if (b.avgViewers !== a.avgViewers) return b.avgViewers - a.avgViewers;
+      // 평균 시청자가 완전히 같으면, categoryId로 고정된 순서를 부여 (항상 동일한 결과 보장)
+      return a.categoryId.localeCompare(b.categoryId);
+    })
+    .slice(0, safeLimit);
 }

@@ -16,28 +16,38 @@ type Props = {
   }[];
 };
 
+function percentileValue(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * p));
+  return sorted[idx];
+}
+
+function topAverage(values: number[], topN: number): number {
+  const sorted = [...values].sort((a, b) => b - a);
+  const top = sorted.slice(0, topN);
+  if (top.length === 0) return 1;
+  return top.reduce((sum, v) => sum + v, 0) / top.length;
+}
+
+function hyperbolicScore(value: number, reference: number): number {
+  if (reference <= 0) return value > 0 ? 100 : 1;
+  return Math.round((100 * value) / (value + reference));
+}
 export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
-  const sortedByViewers = [...allGames].sort(
-    (a, b) => b.concurrentViewers - a.concurrentViewers,
-  );
-  const sortedByBroadcast = [...allGames].sort(
-    (a, b) => b.broadcastCount - a.broadcastCount,
-  );
-
-  // 이제 1등을 그대로 기준값으로 사용 (대회 시청자 왜곡이 없으니 2등 우회 불필요)
-  const maxViewers = sortedByViewers[0]?.concurrentViewers || 1;
-  const maxBroadcast = sortedByBroadcast[0]?.broadcastCount || 1;
-
   const currentGame = allGames.find((g) => g.categoryId === categoryId);
   const currentViewers = currentGame?.concurrentViewers ?? 0;
   const currentBroadcast = currentGame?.broadcastCount ?? 0;
 
-  const viewerPercentile = Math.round(
-    (Math.sqrt(currentViewers) / Math.sqrt(maxViewers)) * 100,
-  );
-  const countPercentile = Math.round(
-    (Math.sqrt(currentBroadcast) / Math.sqrt(maxBroadcast)) * 100,
-  );
+  const viewerValues = allGames.map((g) => g.concurrentViewers);
+  const broadcastValues = allGames.map((g) => g.broadcastCount);
+
+  // 상위 20개 평균의 일부(30%)를 "50점 기준선"으로 삼음
+  const viewerReference = topAverage(viewerValues, 20) * 0.3;
+  const broadcastReference = topAverage(broadcastValues, 20) * 0.3;
+
+  const viewerPercentile = hyperbolicScore(currentViewers, viewerReference);
+  const countPercentile = hyperbolicScore(currentBroadcast, broadcastReference);
 
   // 최소 1점 보장 (방송 수/시청자 0인 경우 대비)
   const totalScore = Math.max(
@@ -77,22 +87,28 @@ export function GameScoreCard({ categoryId, allRows, allGames }: Props) {
         </p>
         <div className="relative group">
           <Info className="w-4 h-4 text-muted-foreground cursor-help" />
-          <div className="absolute left-0 top-full mt-2 w-72 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-2">
+          <div className="absolute left-0 top-full mt-2 w-80 p-3 rounded-lg bg-white/10 backdrop-blur-sm text-xs text-white/70 hidden group-hover:block z-10 space-y-2">
             <p className="font-semibold text-white/90 mb-1">점수 계산 기준</p>
             <p>
-              · <span className="text-white/90">시청자 (60%)</span> — 최근 7일
-              평균 동시시청자의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠
-              0~100점으로 환산해요
+              · <span className="text-white/90">시청자 (60%)</span> — 상위 20개
+              게임의 최근 7일 평균 동시시청자를 구해, 그 평균값의 30%를
+              기준선으로 삼아요. 현재 게임의 시청자가 기준선과 같으면 50점,
+              기준선보다 많으면 50점을 넘고, 적으면 50점 밑으로 내려가요.
             </p>
             <p>
-              · <span className="text-white/90">방송 수 (40%)</span> — 최근 7일
-              방송 수의 제곱근을 전체 게임 중 최고치의 제곱근으로 나눠
-              0~100점으로 환산해요
+              · <span className="text-white/90">방송 수 (40%)</span> — 같은
+              방식으로, 상위 20개 게임의 평균 방송 수의 30%를 기준선으로 삼아
+              0~100점으로 환산해요.
+            </p>
+            <p>
+              · 기준선을 전체 1등이 아니라 상위권 평균으로 잡은 이유는, 비활성
+              카테고리가 많은 상태에서도 점수가 소수 상위권에만 쏠리지 않고
+              고르게 나뉘도록 하기 위해서예요.
             </p>
             <p>
               · <span className="text-white/90">추세</span>는 점수에 반영되지
               않고, 최근 3일 평균과 이전 4일 평균을 비교해 참고용으로만
-              보여드려요
+              보여드려요.
             </p>
           </div>
         </div>

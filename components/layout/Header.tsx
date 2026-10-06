@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 const navItems = [
+  { label: "게임 순위", href: "/games/ranking" },
   { label: "카테고리", href: "/games" },
   { label: "스트리머", href: "/streamers" },
   { label: "랭킹 레이스", href: "/race" },

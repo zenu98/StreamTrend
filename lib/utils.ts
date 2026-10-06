@@ -64,3 +64,103 @@ export function getKSTLocalDate(offsetDays = 0, now: Date = new Date()): Date {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
+
+// lib/utils.ts에 추가
+
+const RANKING_DATA_START_YEAR = 2026;
+const RANKING_DATA_START_MONTH = 7; // 7월부터 집계 시작
+
+export type MonthWeekOption = {
+  label: string; // "1주차"
+  from: Date;
+  to: Date;
+};
+
+export type MonthGroup = {
+  label: string; // "7월"
+  year: number;
+  month: number; // 1~12
+  weeks: MonthWeekOption[];
+};
+
+// lib/utils.ts
+
+function kstDateToUTCBoundary(kstDate: Date): Date {
+  const d = new Date(kstDate);
+  d.setUTCHours(6, 0, 0, 0);
+  return new Date(d.getTime() - 9 * 60 * 60 * 1000);
+}
+
+// 주어진 날짜가 속한 주의 월요일을 반환 (UTC 날짜 기준, KST 달력 날짜로 취급)
+function getMondayOf(date: Date): Date {
+  const d = new Date(date);
+  const dow = d.getUTCDay(); // 0=일 ~ 6=토
+  const diffToMonday = dow === 0 ? 6 : dow - 1;
+  d.setUTCDate(d.getUTCDate() - diffToMonday);
+  return d;
+}
+
+// 그 주(월요일 시작)의 소속 월/년을 "목요일 기준"으로 결정 (ISO 8601 방식)
+function getWeekOwnerMonth(monday: Date): { year: number; month: number } {
+  const thursday = new Date(monday);
+  thursday.setUTCDate(thursday.getUTCDate() + 3);
+  return { year: thursday.getUTCFullYear(), month: thursday.getUTCMonth() + 1 };
+}
+
+export function getMonthWeekOptions(): MonthGroup[] {
+  const todayKst = getKSTBusinessDate();
+  todayKst.setUTCHours(0, 0, 0, 0);
+
+  // 집계 시작일(그 달 1일)이 속한 주의 월요일부터, 오늘이 속한 주의 월요일까지 순회
+  const firstDayOfStartMonth = new Date(
+    Date.UTC(RANKING_DATA_START_YEAR, RANKING_DATA_START_MONTH - 1, 1),
+  );
+  const cursorMonday = getMondayOf(firstDayOfStartMonth);
+  const todayMonday = getMondayOf(todayKst);
+
+  const groupMap = new Map<string, MonthGroup>();
+
+  while (cursorMonday < todayMonday) {
+    const { year, month } = getWeekOwnerMonth(cursorMonday);
+
+    // 집계 시작월 이전으로 귀속되는 주는 건너뜀 (예: 6월 마지막 주가 7월 소속이 아닌 경우)
+    const belongsBeforeStart =
+      year < RANKING_DATA_START_YEAR ||
+      (year === RANKING_DATA_START_YEAR && month < RANKING_DATA_START_MONTH);
+
+    if (!belongsBeforeStart) {
+      const groupKey = `${year}-${month}`;
+      const group = groupMap.get(groupKey) ?? {
+        label: `${month}월`,
+        year,
+        month,
+        weeks: [],
+      };
+
+      const nextMonday = new Date(cursorMonday);
+      nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+
+      // 오늘이 속한 주라면, to를 "오늘까지"로 제한 (미래 날짜 집계 방지)
+      const weekEndExclusive =
+        cursorMonday.getTime() === todayMonday.getTime()
+          ? (() => {
+              const tomorrow = new Date(todayKst);
+              tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+              return tomorrow;
+            })()
+          : nextMonday;
+
+      group.weeks.push({
+        label: `${group.weeks.length + 1}주차`,
+        from: kstDateToUTCBoundary(cursorMonday),
+        to: kstDateToUTCBoundary(weekEndExclusive),
+      });
+
+      groupMap.set(groupKey, group);
+    }
+
+    cursorMonday.setUTCDate(cursorMonday.getUTCDate() + 7);
+  }
+
+  return [...groupMap.values()];
+}
