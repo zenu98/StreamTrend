@@ -7,11 +7,13 @@
  * 게임 상세 페이지의 진행률 바, 링 차트 등에서 사용.
  */
 export function getScoreRingColor(score: number): string {
-  if (score >= 80) return "#00ce7a";
-  if (score >= 60) return "#23ba7e";
-  if (score >= 40) return "#60a5fa";
-  if (score >= 20) return "#f59e0b";
-  return "#e24b4a";
+  if (score >= 90) return "#00ce7a";
+  if (score >= 70) return "#1bb373";
+  if (score >= 50) return "#60a5fa";
+  if (score >= 30) return "#f59e0b";
+  if (score >= 10) return "#e24b4a";
+
+  return "#94a3b8";
 }
 
 /**
