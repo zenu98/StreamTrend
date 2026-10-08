@@ -474,7 +474,7 @@ export async function getGameRanking(
 
   for (const row of rows) {
     const key = row.liveCategory;
-    const prev = categoryMap.get(row.liveCategoryValue) ?? {
+    const prev = categoryMap.get(key) ?? {
       liveCategory: row.liveCategory,
       liveCategoryValue: row.liveCategoryValue,
       totalViewers: 0,
@@ -542,10 +542,6 @@ export async function getGameRanking(
   });
 
   return withScore
-    .sort((a, b) => {
-      if (b.avgViewers !== a.avgViewers) return b.avgViewers - a.avgViewers;
-      // 평균 시청자가 완전히 같으면, categoryId로 고정된 순서를 부여 (항상 동일한 결과 보장)
-      return a.categoryId.localeCompare(b.categoryId);
-    })
+    .sort((a, b) => b.totalScore - a.totalScore)
     .slice(0, safeLimit);
 }

@@ -120,7 +120,7 @@ export function getMonthWeekOptions(): MonthGroup[] {
 
   const groupMap = new Map<string, MonthGroup>();
 
-  while (cursorMonday < todayMonday) {
+  while (cursorMonday <= todayMonday) {
     const { year, month } = getWeekOwnerMonth(cursorMonday);
 
     // 집계 시작월 이전으로 귀속되는 주는 건너뜀 (예: 6월 마지막 주가 7월 소속이 아닌 경우)
