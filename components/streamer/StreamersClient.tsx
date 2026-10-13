@@ -76,7 +76,7 @@ export function StreamersClient({
         <StreamerSearch />
       </div>
 
-      <div className="space-y-3">
+      {/* <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <MonthWeekFilterTab
             groups={rankingGroups}
@@ -102,7 +102,7 @@ export function StreamersClient({
         ) : (
           <StreamerRankingList streamers={rankingStreamers} />
         )}
-      </div>
+      </div> */}
     </main>
   );
 }
