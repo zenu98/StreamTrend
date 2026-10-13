@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { getKSTBusinessDate, toKSTDateString } from "./utils";
+import { BROADCAST_CHANNEL_IDS } from "./data/channel";
 export type StreamerLiveTrendPoint = {
   time: string; // "HH:mm" (KST)
   collectedAt: string; // ISO, 정확한 시각이 필요할 때(툴팁 등)를 위해 함께 제공
@@ -473,4 +474,57 @@ export async function getStreamerTrend(
         }))
         .sort((a, b) => b.concurrentViewers - a.concurrentViewers),
     }));
+}
+
+export type StreamerRankingEntry = {
+  channelId: string;
+  channelName: string;
+  channelImageUrl: string | null;
+  followerCount: number;
+  verifiedMark: boolean;
+  avgViewers: number;
+  maxViewers: number;
+};
+
+const RANKING_TOP_N = 100;
+
+export async function getStreamerRanking(
+  from: Date,
+  to: Date,
+  excludeBroadcastChannels: boolean,
+): Promise<StreamerRankingEntry[]> {
+  "use cache";
+  cacheLife("statsTime");
+
+  const excludeIds = excludeBroadcastChannels ? [...BROADCAST_CHANNEL_IDS] : [];
+
+  const rows = await prisma.$queryRaw<
+    {
+      channelId: string;
+      channelName: string;
+      channelImageUrl: string | null;
+      followerCount: number;
+      verifiedMark: boolean;
+      avgViewers: number;
+      maxViewers: number;
+    }[]
+  >`
+    SELECT
+      s."channelId",
+      s."channelName",
+      s."channelImageUrl",
+      s."followerCount",
+      s."verifiedMark",
+      COALESCE(ROUND(AVG(d."avgViewers")), 0)::int AS "avgViewers",
+      COALESCE(MAX(d."maxViewers"), 0)::int AS "maxViewers"
+    FROM "Streamer" s
+    JOIN "StreamerDailySummary" d ON s."channelId" = d."channelId"
+    WHERE d."date" >= ${from} AND d."date" < ${to}
+      AND (${excludeIds.length} = 0 OR s."channelId" <> ALL(${excludeIds}::text[]))
+    GROUP BY s."channelId", s."channelName", s."channelImageUrl", s."followerCount", s."verifiedMark"
+    ORDER BY "avgViewers" DESC
+    LIMIT ${RANKING_TOP_N}
+  `;
+
+  return rows;
 }

@@ -110,8 +110,8 @@ function getWeekOwnerMonth(monday: Date): { year: number; month: number } {
 export function getMonthWeekOptions(): MonthGroup[] {
   const todayKst = getKSTBusinessDate();
   todayKst.setUTCHours(0, 0, 0, 0);
+  const isMonday = todayKst.getUTCDay() === 1; // 0=일 ~ 6=토
 
-  // 집계 시작일(그 달 1일)이 속한 주의 월요일부터, 오늘이 속한 주의 월요일까지 순회
   const firstDayOfStartMonth = new Date(
     Date.UTC(RANKING_DATA_START_YEAR, RANKING_DATA_START_MONTH - 1, 1),
   );
@@ -121,9 +121,15 @@ export function getMonthWeekOptions(): MonthGroup[] {
   const groupMap = new Map<string, MonthGroup>();
 
   while (cursorMonday <= todayMonday) {
+    const isCurrentWeek = cursorMonday.getTime() === todayMonday.getTime();
+
+    // 월요일에는 이번 주 데이터가 아직 하나도 없으니, 이번 주 자체를 건너뜀
+    if (isCurrentWeek && isMonday) {
+      break;
+    }
+
     const { year, month } = getWeekOwnerMonth(cursorMonday);
 
-    // 집계 시작월 이전으로 귀속되는 주는 건너뜀 (예: 6월 마지막 주가 7월 소속이 아닌 경우)
     const belongsBeforeStart =
       year < RANKING_DATA_START_YEAR ||
       (year === RANKING_DATA_START_YEAR && month < RANKING_DATA_START_MONTH);
@@ -140,15 +146,14 @@ export function getMonthWeekOptions(): MonthGroup[] {
       const nextMonday = new Date(cursorMonday);
       nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
 
-      // 오늘이 속한 주라면, to를 "오늘까지"로 제한 (미래 날짜 집계 방지)
-      const weekEndExclusive =
-        cursorMonday.getTime() === todayMonday.getTime()
-          ? (() => {
-              const tomorrow = new Date(todayKst);
-              tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-              return tomorrow;
-            })()
-          : nextMonday;
+      // 화요일 이후의 "이번 주"는 아직 끝나지 않았으니, to를 오늘까지로 제한
+      const weekEndExclusive = isCurrentWeek
+        ? (() => {
+            const tomorrow = new Date(todayKst);
+            tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+            return tomorrow;
+          })()
+        : nextMonday;
 
       group.weeks.push({
         label: `${group.weeks.length + 1}주차`,
@@ -163,4 +168,22 @@ export function getMonthWeekOptions(): MonthGroup[] {
   }
 
   return [...groupMap.values()];
+}
+// "오늘(영업일) 06:00 KST"를 실제 UTC 타임스탬프로 반환.
+// StreamerDailySummary.date와 직접 비교할 때 씀.
+export function getTodayBusinessBoundary(now: Date = new Date()): Date {
+  const kstDate = getKSTBusinessDate(now); // 오늘의 KST 날짜(00:00 기준)
+  kstDate.setUTCHours(6, 0, 0, 0);
+  return new Date(kstDate.getTime() - 9 * 60 * 60 * 1000);
+}
+// lib/utils.ts
+// summarize.ts가 date 컬럼에 "영업일의 KST 00:00"을 저장하므로,
+// 06:00 기준 주차 경계를 요약 테이블 조회용으로 6시간 당긴다.
+const SUMMARY_DATE_OFFSET_MS = 6 * 60 * 60 * 1000;
+
+export function toSummaryDateRange(from: Date, to: Date) {
+  return {
+    from: new Date(from.getTime() - SUMMARY_DATE_OFFSET_MS),
+    to: new Date(to.getTime() - SUMMARY_DATE_OFFSET_MS),
+  };
 }

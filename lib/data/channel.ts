@@ -16,4 +16,9 @@ export const BROADCAST_CHANNEL_IDS = new Set([
   "b2d4e3d99f4504e71ca7705da57429e6", // 아시안게임 SPOTV PLUS
   "8d84c2b9e20f9034388845d9c109c787", // 아시안게임 SPOTV NOW
   "d3fd56ef0d10dc742419f54543b1df00", // 아시안게임 SPOTV
+  "04b9076004dfe8cb119835eb28dcc747", // 치지직 게임
+  "d9c65c92b701450ff4e6c86b0ca7c932", // 이터널리턴 공식
+  "4e10683fd32d6fb6d38924cb9bf483a3", // 발로란트 코리아
+  "40bebcd63959291701da722988e10d30", // 치지직 배구 중계 A
+  "c395b33989e330bce7aca90f8abcadbf", // 치지직 배구 중계 B
 ]);

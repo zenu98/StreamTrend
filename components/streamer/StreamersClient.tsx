@@ -1,24 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { StreamerSearch } from "@/components/streamer/StreamerSearch";
+import { StreamerRankingList } from "@/components/streamer/StreamerRankingList";
+import { MonthWeekFilterTab } from "../ui/month-week-tab";
 import { MCN_KEYS, MCNKey } from "@/lib/data/mcn";
 import { GROUP_KEYS, GroupKey } from "@/lib/data/groups";
 import { type Streamer } from "@/lib/streamers";
 
-type TopTab = "파트너" | "MCN" | "그룹";
+type TopTab = "전체" | "파트너" | "MCN" | "그룹";
 type SortKey = "recentAvgViewers" | "followerCount";
+
+type MonthGroup = { label: string; weeks: { label: string }[] };
+
+type StreamerRankingEntry = {
+  channelId: string;
+  channelName: string;
+  channelImageUrl: string | null;
+  verifiedMark: boolean;
+  followerCount: number;
+  avgViewers: number;
+  maxViewers: number;
+};
 
 type Props = {
   partnerStreamers: Streamer[];
   mcnStreamers: Record<string, Streamer[]>;
   groupStreamers: Record<string, Streamer[]>;
+  rankingGroups: MonthGroup[];
+  initialMonthIndex: number;
+  initialWeekIndex: number;
+  initialRankingStreamers: StreamerRankingEntry[];
 };
 
-function formatCount(n: number) {
-  if (n >= 10000) return `${Math.round(n / 1000) / 10}만`;
+// formatCount, StreamerRow는 기존 그대로 (생략 없이 유지)
+export function formatCount(n: number): string {
+  if (n >= 10000) {
+    const man = n / 10000;
+    // 정수면 소수점 없이, 아니면 소수점 첫째 자리까지
+    return Number.isInteger(man) ? `${man}만` : `${man.toFixed(1)}만`;
+  }
   return n.toLocaleString();
 }
 
@@ -113,8 +136,12 @@ export function StreamersClient({
   partnerStreamers,
   mcnStreamers,
   groupStreamers,
+  rankingGroups,
+  initialMonthIndex,
+  initialWeekIndex,
+  initialRankingStreamers,
 }: Props) {
-  const [tab, setTab] = useState<TopTab>("파트너");
+  const [tab, setTab] = useState<TopTab>("전체");
   const [selectedMCN, setSelectedMCN] = useState<MCNKey>(MCN_KEYS[0]);
   const [selectedGroup, setSelectedGroup] = useState<GroupKey | null>(
     GROUP_KEYS.length > 0 ? GROUP_KEYS[0] : null,
@@ -123,6 +150,37 @@ export function StreamersClient({
 
   const LIMIT = 20;
   const [limit, setLimit] = useState(LIMIT);
+
+  // "전체" 탭 전용 상태 — 서버에서 받은 초기값으로 시작, 이후 핸들러에서만 갱신
+  const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
+  const [weekIndex, setWeekIndex] = useState(initialWeekIndex);
+  const [excludeBroadcast, setExcludeBroadcast] = useState(true);
+  const [rankingStreamers, setRankingStreamers] = useState<
+    StreamerRankingEntry[]
+  >(initialRankingStreamers);
+  const [isPending, startTransition] = useTransition();
+
+  function fetchRanking(m: number, w: number, exclude: boolean) {
+    startTransition(async () => {
+      const res = await fetch(
+        `/api/streamer-ranking?month=${m}&week=${w}&excludeBroadcast=${exclude}`,
+      );
+      if (!res.ok) return;
+      const json = await res.json();
+      setRankingStreamers(json.streamers);
+    });
+  }
+
+  function handleWeekChange(m: number, w: number) {
+    setMonthIndex(m);
+    setWeekIndex(w);
+    fetchRanking(m, w, excludeBroadcast);
+  }
+
+  function handleExcludeBroadcastChange(checked: boolean) {
+    setExcludeBroadcast(checked);
+    fetchRanking(monthIndex, weekIndex, checked);
+  }
 
   function sorted(list: Streamer[]) {
     return [...list].sort((a, b) => b[sort] - a[sort]);
@@ -137,21 +195,20 @@ export function StreamersClient({
   }
   const list = currentList();
   const visibleList = list.slice(0, limit);
+
   return (
     <main>
-      {/* 검색 */}
       <div className="mb-5">
         <StreamerSearch />
       </div>
 
-      {/* 언더라인 탭 + 정렬 */}
       <div className="flex items-center border-b border-border mb-4">
-        {(["파트너", "MCN", "그룹"] as TopTab[]).map((t) => (
+        {(["전체", "파트너", "MCN", "그룹"] as TopTab[]).map((t) => (
           <button
             key={t}
             onClick={() => {
               setTab(t);
-              setLimit(limit);
+              setLimit(LIMIT);
             }}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t
@@ -162,24 +219,55 @@ export function StreamersClient({
             {t}
           </button>
         ))}
-        <div className="flex gap-3 ml-auto pb-2">
-          {(["recentAvgViewers", "followerCount"] as SortKey[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSort(s)}
-              className={`text-xs transition-colors ${
-                sort === s
-                  ? "text-primary border-b border-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {s === "recentAvgViewers" ? "평균시청자" : "팔로워"}
-            </button>
-          ))}
-        </div>
+        {tab !== "전체" && (
+          <div className="flex gap-3 ml-auto pb-2">
+            {(["recentAvgViewers", "followerCount"] as SortKey[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSort(s)}
+                className={`text-xs transition-colors ${
+                  sort === s
+                    ? "text-primary border-b border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {s === "recentAvgViewers" ? "평균시청자" : "팔로워"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* MCN/그룹 가로 스크롤 칩 */}
+      {tab === "전체" && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <MonthWeekFilterTab
+              groups={rankingGroups}
+              monthIndex={monthIndex}
+              weekIndex={weekIndex}
+              onChange={handleWeekChange}
+            />
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={excludeBroadcast}
+                onChange={(e) => handleExcludeBroadcastChange(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border accent-primary"
+              />
+              중계 채널 제외
+            </label>
+          </div>
+
+          {isPending ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              불러오는 중...
+            </p>
+          ) : (
+            <StreamerRankingList streamers={rankingStreamers} />
+          )}
+        </div>
+      )}
+
       {(tab === "MCN" || tab === "그룹") && (
         <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
           {(tab === "MCN" ? MCN_KEYS : GROUP_KEYS).map((key) => (
@@ -201,30 +289,29 @@ export function StreamersClient({
         </div>
       )}
 
-      {/* 리스트 */}
-      {/* 리스트 */}
-      {tab === "그룹" && GROUP_KEYS.length === 0 ? (
-        <p className="text-sm text-muted-foreground">준비 중입니다.</p>
-      ) : (
-        <div>
-          {visibleList.map((s, i) => (
-            <StreamerRow
-              key={s.channelId}
-              streamer={s}
-              rank={i + 1}
-              sort={sort}
-            />
-          ))}
-          {limit < list.length && (
-            <button
-              onClick={() => setLimit((prev) => prev + LIMIT)}
-              className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors"
-            >
-              더 보기
-            </button>
-          )}
-        </div>
-      )}
+      {tab !== "전체" &&
+        (tab === "그룹" && GROUP_KEYS.length === 0 ? (
+          <p className="text-sm text-muted-foreground">준비 중입니다.</p>
+        ) : (
+          <div>
+            {visibleList.map((s, i) => (
+              <StreamerRow
+                key={s.channelId}
+                streamer={s}
+                rank={i + 1}
+                sort={sort}
+              />
+            ))}
+            {limit < list.length && (
+              <button
+                onClick={() => setLimit((prev) => prev + LIMIT)}
+                className="w-full mt-4 py-2 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors"
+              >
+                더 보기
+              </button>
+            )}
+          </div>
+        ))}
     </main>
   );
 }

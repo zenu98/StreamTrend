@@ -1,11 +1,11 @@
-// app/games/ranking/page.tsx
-import { getMonthWeekOptions } from "@/lib/utils";
+import { getMonthWeekOptions, toSummaryDateRange } from "@/lib/utils";
 import { getGameRanking } from "@/lib/gameStats";
 import { GameRankingPageClient } from "@/components/game/GameRankingPageClient";
 import { connection } from "next/server";
 import { Info } from "lucide-react";
 
-export const SCORE_TOOLTIP_LINES = [
+// page.tsx에서는 임의의 값을 export할 수 없어서 export 제거
+const SCORE_TOOLTIP_LINES = [
   "인기점수 = 시청자 (60%) + 방송 수 (40%) — 각각 상위 20개 게임의 평균(최근 7일)의 30%를 기준선으로 삼아, 기준선과 같으면 50점, 많으면 50점 이상, 적으면 50점 이하로 환산해 합산해요",
   "1등이 아닌 상위권 평균을 기준으로 삼아, 소수 상위권에만 점수가 쏠리지 않도록 했어요",
   "공식 채널·중계 방송은 제외하고, 스트리머가 직접 플레이하는 방송만 집계해요",
@@ -32,7 +32,10 @@ export default async function GameRankingPage() {
   const initialWeekIndex = groups[initialMonthIndex].weeks.length - 1;
   const initialWeek = groups[initialMonthIndex].weeks[initialWeekIndex];
 
-  const initialGames = await getGameRanking(initialWeek.from, initialWeek.to);
+  // DailySummary.date는 "영업일의 KST 00:00"으로 저장되어 있으므로
+  // 06:00 기준 주차 경계를 요약 테이블 조회용으로 6시간 당겨서 사용
+  const range = toSummaryDateRange(initialWeek.from, initialWeek.to);
+  const initialGames = await getGameRanking(range.from, range.to);
 
   return (
     <main className="p-4 md:p-8 space-y-6">

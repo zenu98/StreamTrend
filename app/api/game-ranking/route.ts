@@ -1,4 +1,4 @@
-import { getMonthWeekOptions } from "@/lib/utils";
+import { getMonthWeekOptions, toSummaryDateRange } from "@/lib/utils";
 import { getGameRanking } from "@/lib/gameStats";
 
 export async function GET(request: Request) {
@@ -25,7 +25,11 @@ export async function GET(request: Request) {
 
   const week = group.weeks[weekIndex];
   const limit = [100, 200].includes(limitRaw) ? limitRaw : 100;
-  const games = await getGameRanking(week.from, week.to, limit);
+
+  // DailySummary.date는 "영업일의 KST 00:00"으로 저장되어 있으므로
+  // 06:00 기준 주차 경계를 요약 테이블 조회용으로 6시간 당겨서 사용
+  const range = toSummaryDateRange(week.from, week.to);
+  const games = await getGameRanking(range.from, range.to, limit);
 
   return Response.json({
     monthLabel: group.label,
