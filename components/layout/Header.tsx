@@ -52,7 +52,7 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="relative z-50 border-b bg-background px-4 md:px-8 h-14 flex items-center justify-between">
+    <header className="relative z-50 border-b  px-4 md:px-8 h-14 flex items-center justify-between">
       <Link
         href="/"
         className="flex items-center gap-2 font-bold text-lg"
