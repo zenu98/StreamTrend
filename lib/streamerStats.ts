@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { getKSTBusinessDate, toKSTDateString } from "./utils";
 import { BROADCAST_CHANNEL_IDS } from "./data/channel";
 export type StreamerLiveTrendPoint = {
@@ -484,46 +484,69 @@ export type StreamerRankingEntry = {
   verifiedMark: boolean;
   avgViewers: number;
   maxViewers: number;
+  topGames: string[];
 };
 
 const RANKING_TOP_N = 100;
+const TOP_GAMES_PER_STREAMER = 3;
 
 export async function getStreamerRanking(
   from: Date,
   to: Date,
   excludeBroadcastChannels: boolean,
 ): Promise<StreamerRankingEntry[]> {
-  "use cache";
-  cacheLife("statsTime");
+  "use cache: remote";
+  cacheLife("dailySummary");
+  cacheTag("ranking");
 
   const excludeIds = excludeBroadcastChannels ? [...BROADCAST_CHANNEL_IDS] : [];
 
-  const rows = await prisma.$queryRaw<
-    {
-      channelId: string;
-      channelName: string;
-      channelImageUrl: string | null;
-      followerCount: number;
-      verifiedMark: boolean;
-      avgViewers: number;
-      maxViewers: number;
-    }[]
-  >`
+  const rows = await prisma.$queryRaw<StreamerRankingEntry[]>`
+    WITH ranked AS (
+      SELECT
+        s."channelId",
+        s."channelName",
+        s."channelImageUrl",
+        s."followerCount",
+        s."verifiedMark",
+        COALESCE(ROUND(AVG(d."avgViewers")), 0)::int AS "avgViewers",
+        COALESCE(MAX(d."maxViewers"), 0)::int AS "maxViewers"
+      FROM "Streamer" s
+      JOIN "StreamerDailySummary" d ON s."channelId" = d."channelId"
+      WHERE d."date" >= ${from} AND d."date" < ${to}
+        AND (${excludeIds.length} = 0 OR s."channelId" <> ALL(${excludeIds}::text[]))
+      GROUP BY s."channelId", s."channelName", s."channelImageUrl", s."followerCount", s."verifiedMark"
+      ORDER BY "avgViewers" DESC
+      LIMIT ${RANKING_TOP_N}
+    ),
+    games AS (
+      -- 상위 100명에 대해서만, 그 주차의 게임별 방송 시간(스냅샷 수) 합산
+      SELECT
+        d."channelId",
+        MAX(d."liveCategoryValue") AS "category",
+        ROW_NUMBER() OVER (
+          PARTITION BY d."channelId"
+          ORDER BY SUM(d."broadcastCount") DESC
+        ) AS rn
+      FROM "StreamerDailySummary" d
+      WHERE d."channelId" IN (SELECT "channelId" FROM ranked)
+        AND d."date" >= ${from} AND d."date" < ${to}
+        AND d."liveCategoryValue" <> ''
+      GROUP BY d."channelId", d."liveCategory"
+    )
     SELECT
-      s."channelId",
-      s."channelName",
-      s."channelImageUrl",
-      s."followerCount",
-      s."verifiedMark",
-      COALESCE(ROUND(AVG(d."avgViewers")), 0)::int AS "avgViewers",
-      COALESCE(MAX(d."maxViewers"), 0)::int AS "maxViewers"
-    FROM "Streamer" s
-    JOIN "StreamerDailySummary" d ON s."channelId" = d."channelId"
-    WHERE d."date" >= ${from} AND d."date" < ${to}
-      AND (${excludeIds.length} = 0 OR s."channelId" <> ALL(${excludeIds}::text[]))
-    GROUP BY s."channelId", s."channelName", s."channelImageUrl", s."followerCount", s."verifiedMark"
-    ORDER BY "avgViewers" DESC
-    LIMIT ${RANKING_TOP_N}
+      r.*,
+      COALESCE(
+        ARRAY_AGG(g."category" ORDER BY g.rn)
+          FILTER (WHERE g."category" IS NOT NULL),
+        '{}'
+      ) AS "topGames"
+    FROM ranked r
+    LEFT JOIN games g
+      ON g."channelId" = r."channelId" AND g.rn <= ${TOP_GAMES_PER_STREAMER}
+    GROUP BY r."channelId", r."channelName", r."channelImageUrl",
+             r."followerCount", r."verifiedMark", r."avgViewers", r."maxViewers"
+    ORDER BY r."avgViewers" DESC
   `;
 
   return rows;

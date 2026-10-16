@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { cacheLife } from "next/cache";
+import { cacheLife, cacheTag } from "next/cache";
 import { getLives } from "./lives";
 import { toKSTDateString } from "./utils";
 import { BROADCAST_CHANNEL_IDS } from "./data/channel";
@@ -435,8 +435,9 @@ export async function getGameRanking(
   to: Date,
   limit: number = DEFAULT_RANKING_LIMIT,
 ): Promise<GameRankingEntry[]> {
-  "use cache";
-  cacheLife("statsTime");
+  "use cache: remote";
+  cacheLife("dailySummary");
+  cacheTag("ranking");
 
   const safeLimit = Math.min(Math.max(1, limit), MAX_RANKING_LIMIT);
   const [rows, categories, streamerDayCounts] = await Promise.all([

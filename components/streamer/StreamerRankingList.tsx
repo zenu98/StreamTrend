@@ -5,17 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { formatCount } from "./StreamersClient";
-
-type StreamerRankingEntry = {
-  channelId: string;
-  channelName: string;
-  channelImageUrl: string | null;
-  followerCount: number;
-  verifiedMark: boolean;
-  avgViewers: number;
-  maxViewers: number;
-};
-
+import { StreamerRankingEntry } from "@/lib/streamerStats";
 type SortKey = "avgViewers" | "maxViewers" | "followerCount";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
@@ -183,18 +173,25 @@ function StreamerRankingRow({
           )}
         </div>
 
-        <div className="flex min-w-0 max-w-[200px] flex-1 items-center gap-1 sm:max-w-[360px]">
-          <p className="truncate text-sm font-medium text-white">
-            {streamer.channelName}
-          </p>
-          {streamer.verifiedMark && (
-            <Image
-              src="https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png"
-              alt="파트너"
-              width={13}
-              height={13}
-              className="shrink-0"
-            />
+        <div className="min-w-0 max-w-[200px]  flex-1 sm:max-w-[360px]">
+          <div className="flex min-w-0 items-center gap-1">
+            <p className="truncate text-sm font-medium text-white">
+              {streamer.channelName}
+            </p>
+            {streamer.verifiedMark && (
+              <Image
+                src="https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png"
+                alt="파트너"
+                width={13}
+                height={13}
+                className="shrink-0"
+              />
+            )}
+          </div>
+          {streamer.topGames.length > 0 && (
+            <p className="mt-0.5 truncate text-xs text-white/40">
+              {streamer.topGames.join(" · ")}
+            </p>
           )}
         </div>
 

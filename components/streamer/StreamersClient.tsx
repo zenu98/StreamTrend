@@ -4,18 +4,8 @@ import { useState, useTransition } from "react";
 import { StreamerSearch } from "@/components/streamer/StreamerSearch";
 import { StreamerRankingList } from "@/components/streamer/StreamerRankingList";
 import { MonthWeekFilterTab } from "../ui/month-week-tab";
-
+import { StreamerRankingEntry } from "@/lib/streamerStats";
 type MonthGroup = { label: string; weeks: { label: string }[] };
-
-type StreamerRankingEntry = {
-  channelId: string;
-  channelName: string;
-  channelImageUrl: string | null;
-  verifiedMark: boolean;
-  followerCount: number;
-  avgViewers: number;
-  maxViewers: number;
-};
 
 type Props = {
   rankingGroups: MonthGroup[];
@@ -76,7 +66,7 @@ export function StreamersClient({
         <StreamerSearch />
       </div>
 
-      {/* <div className="space-y-3">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <MonthWeekFilterTab
             groups={rankingGroups}
@@ -102,7 +92,7 @@ export function StreamersClient({
         ) : (
           <StreamerRankingList streamers={rankingStreamers} />
         )}
-      </div> */}
+      </div>
     </main>
   );
 }

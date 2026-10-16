@@ -200,6 +200,7 @@ export async function summarizeYesterday(
     { timeout: 60000 },
   );
   revalidateTag("broadcast-rank", "broadcastRank");
+  revalidateTag("ranking", { expire: 0 }); // 06:00 집계 직후 랭킹 캐시 즉시 만료
   return {
     success: true,
     date: summaryDateUTC,

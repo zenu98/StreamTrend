@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
       revalidate: 86400,
       expire: 86400 * 7,
     },
+    dailySummary: {
+      stale: 300,
+      revalidate: 86400,
+      expire: 86400 * 2,
+    },
   },
   images: {
     minimumCacheTTL: 86400, // 이미지 최적화 캐싱 시간 24시간

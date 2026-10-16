@@ -1,10 +1,32 @@
+import { Suspense } from "react";
+import { cacheLife, cacheTag } from "next/cache";
 import { getMonthWeekOptions, toSummaryDateRange } from "@/lib/utils";
 import { getStreamerRanking } from "@/lib/streamerStats";
 import { StreamersClient } from "@/components/streamer/StreamersClient";
-import { connection } from "next/server";
 
-export default async function StreamersPage() {
-  await connection();
+export default function StreamersPage() {
+  return (
+    <div className="p-4 md:p-8 space-y-4">
+      <Suspense
+        fallback={<div className="text-muted-foreground">로딩 중...</div>}
+      >
+        <StreamersContent />
+      </Suspense>
+    </div>
+  );
+}
+
+async function StreamersContent() {
+  const data = await getInitialStreamerRankingData();
+  return <StreamersClient {...data} />;
+}
+
+// 현재 시각(getMonthWeekOptions)을 캐시 함수 안에서 읽어서
+// connection() 없이 페이지를 미리 렌더링할 수 있게 함
+async function getInitialStreamerRankingData() {
+  "use cache";
+  cacheLife("dailySummary");
+  cacheTag("ranking");
 
   const groups = getMonthWeekOptions();
   const initialMonthIndex = groups.length - 1;
@@ -20,19 +42,13 @@ export default async function StreamersPage() {
     true, // excludeBroadcast 기본값
   );
 
-  const rankingGroups = groups.map((g) => ({
-    label: g.label,
-    weeks: g.weeks.map((w) => ({ label: w.label })),
-  }));
-
-  return (
-    <div className="p-4 md:p-8 space-y-4">
-      <StreamersClient
-        rankingGroups={rankingGroups}
-        initialMonthIndex={initialMonthIndex}
-        initialWeekIndex={initialWeekIndex}
-        initialRankingStreamers={initialRankingStreamers}
-      />
-    </div>
-  );
+  return {
+    rankingGroups: groups.map((g) => ({
+      label: g.label,
+      weeks: g.weeks.map((w) => ({ label: w.label })),
+    })),
+    initialMonthIndex,
+    initialWeekIndex,
+    initialRankingStreamers,
+  };
 }
