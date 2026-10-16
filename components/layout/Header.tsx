@@ -3,14 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ChevronDown, Menu, X } from "lucide-react";
 
 type NavLink = {
   label: string;
   href: string;
   description?: string;
-  isActive: (pathname: string) => boolean;
 };
 
 type NavGroup = {
@@ -29,45 +27,32 @@ const NAV: NavEntry[] = [
       {
         label: "실시간 카테고리",
         href: "/games",
-        description: "지금 방송 중인 카테고리와 검색",
-        // /games 와 /games/[category] (게임 상세). 순위 페이지는 제외
-        isActive: (p) =>
-          p === "/games" ||
-          (p.startsWith("/games/") && !p.startsWith("/games/ranking")),
+        description: "지금 방송 중인 게임과 검색",
       },
       {
-        label: "카테고리 순위",
+        label: "게임 순위",
         href: "/games/ranking",
-        description: "주차별 인기 카테고리 순위",
-        isActive: (p) => p.startsWith("/games/ranking"),
+        description: "주차별 인기 게임 순위",
       },
     ],
   },
-  {
-    label: "스트리머",
-    href: "/streamers",
-    isActive: (p) => p.startsWith("/streamers"),
-  },
-  {
-    label: "랭킹 레이스",
-    href: "/race",
-    isActive: (p) => p.startsWith("/race"),
-  },
+  { label: "스트리머", href: "/streamers" },
+  { label: "랭킹 레이스", href: "/race" },
 ];
+
+// 모바일용: 그룹을 풀어서 1단계 링크 목록으로
 const MOBILE_LINKS: NavLink[] = NAV.flatMap((entry) =>
   isGroup(entry) ? entry.items : [entry],
 );
-const entryActive = (entry: NavEntry, pathname: string) =>
-  isGroup(entry)
-    ? entry.items.some((i) => i.isActive(pathname))
-    : entry.isActive(pathname);
+
+const navButtonClass =
+  "flex items-center gap-1 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground";
 
 export function Header() {
-  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <header className="relative z-50 border-b  px-4 md:px-8 h-14 flex items-center justify-between">
+    <header className="relative z-50 border-b bg-background px-4 md:px-8 h-14 flex items-center justify-between">
       <Link
         href="/"
         className="flex items-center gap-2 font-bold text-lg"
@@ -87,14 +72,9 @@ export function Header() {
       <nav className="hidden md:flex items-center gap-1">
         {NAV.map((entry) =>
           isGroup(entry) ? (
-            <NavDropdown key={entry.label} group={entry} pathname={pathname} />
+            <NavDropdown key={entry.label} group={entry} />
           ) : (
-            <Link
-              key={entry.href}
-              href={entry.href}
-              aria-current={entry.isActive(pathname) ? "page" : undefined}
-              className={navButtonClass(entry.isActive(pathname))}
-            >
+            <Link key={entry.href} href={entry.href} className={navButtonClass}>
               {entry.label}
             </Link>
           ),
@@ -120,12 +100,14 @@ export function Header() {
           />
           <nav className="absolute left-0 right-0 top-14 z-50 flex flex-col gap-1 border-b bg-background p-2 shadow-lg md:hidden">
             {MOBILE_LINKS.map((item) => (
-              <MobileLink
+              <Link
                 key={item.href}
-                item={item}
-                active={item.isActive(pathname)}
-                onNavigate={() => setMobileOpen(false)}
-              />
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className="rounded-md px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+              >
+                {item.label}
+              </Link>
             ))}
           </nav>
         </>
@@ -134,24 +116,9 @@ export function Header() {
   );
 }
 
-function navButtonClass(active: boolean) {
-  return `flex items-center gap-1 rounded-md px-3 py-2 text-sm transition-colors ${
-    active
-      ? "text-foreground font-medium"
-      : "text-muted-foreground hover:text-foreground"
-  }`;
-}
-
-function NavDropdown({
-  group,
-  pathname,
-}: {
-  group: NavGroup;
-  pathname: string;
-}) {
+function NavDropdown({ group }: { group: NavGroup }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const active = group.items.some((i) => i.isActive(pathname));
 
   // 바깥 클릭 / Esc로 닫기
   useEffect(() => {
@@ -177,7 +144,7 @@ function NavDropdown({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className={navButtonClass(active)}
+        className={navButtonClass}
       >
         {group.label}
         <ChevronDown
@@ -190,61 +157,26 @@ function NavDropdown({
           role="menu"
           className="absolute left-0 top-full mt-1 w-64 rounded-xl border border-white/10 bg-background p-1.5 shadow-xl"
         >
-          {group.items.map((item) => {
-            const itemActive = item.isActive(pathname);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                role="menuitem"
-                aria-current={itemActive ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={`block rounded-lg px-3 py-2 transition-colors ${
-                  itemActive ? "bg-white/10" : "hover:bg-white/5"
-                }`}
-              >
-                <p className="text-sm font-medium text-foreground">
-                  {item.label}
+          {group.items.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block rounded-lg px-3 py-2 transition-colors hover:bg-white/5"
+            >
+              <p className="text-sm font-medium text-foreground">
+                {item.label}
+              </p>
+              {item.description && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {item.description}
                 </p>
-                {item.description && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {item.description}
-                  </p>
-                )}
-              </Link>
-            );
-          })}
+              )}
+            </Link>
+          ))}
         </div>
       )}
     </div>
-  );
-}
-
-function MobileLink({
-  item,
-  active,
-  onNavigate,
-  indent = false,
-}: {
-  item: NavLink;
-  active: boolean;
-  onNavigate: () => void;
-  indent?: boolean;
-}) {
-  return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      className={`rounded-md py-2.5 text-sm transition-colors ${
-        indent ? "pl-6 pr-3" : "px-3"
-      } ${
-        active
-          ? "bg-white/10 font-medium text-foreground"
-          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-      }`}
-    >
-      {item.label}
-    </Link>
   );
 }
