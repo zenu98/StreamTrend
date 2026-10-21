@@ -566,56 +566,56 @@ export async function getWeeklyTopStreamers() {
   }));
 }
 
+const MIN_SNAPSHOTS = 12; // 최소 1시간(5분 × 12) 이상 방송한 스트리머만 순위에 포함
+
 export async function get3DaysTopStreamers() {
   "use cache";
   cacheLife("statsTime");
 
   const from = getPeriodFrom("3days");
+  const where = {
+    date: { gte: from },
+    channelId: { notIn: [...BROADCAST_CHANNEL_IDS] },
+  };
 
   const [rows, allGameRows] = await Promise.all([
+    // channelId로만 묶어서, 이름이나 이미지가 바뀌어도 한 채널로 합산
     prisma.streamerDailySummary.groupBy({
-      by: ["channelId", "channelName", "channelImageUrl"],
-      where: {
-        date: { gte: from },
-        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] }, // ← 추가
-      },
+      by: ["channelId"],
+      where,
       _sum: { totalViewers: true, broadcastCount: true },
       _max: { maxViewers: true },
     }),
     prisma.streamerDailySummary.groupBy({
       by: ["channelId", "liveCategoryValue"],
-      where: {
-        date: { gte: from },
-        channelId: { notIn: [...BROADCAST_CHANNEL_IDS] }, // ← 추가
-      },
+      where,
       _sum: { totalViewers: true },
     }),
   ]);
 
-  const deduped = new Map<string, (typeof rows)[0]>();
-  for (const row of rows) {
-    const existing = deduped.get(row.channelId);
-    if (
-      !existing ||
-      (row._max.maxViewers ?? 0) > (existing._max.maxViewers ?? 0)
-    ) {
-      deduped.set(row.channelId, row);
-    }
-  }
+  const avg = (r: (typeof rows)[0]) =>
+    (r._sum.totalViewers ?? 0) / (r._sum.broadcastCount || 1);
 
-  const top10 = [...deduped.values()]
-    .sort((a, b) => {
-      const avgA = (a._sum.totalViewers ?? 0) / (a._sum.broadcastCount ?? 1);
-      const avgB = (b._sum.totalViewers ?? 0) / (b._sum.broadcastCount ?? 1);
-      return avgB - avgA;
-    })
+  const top10 = rows
+    .filter((r) => (r._sum.broadcastCount ?? 0) >= MIN_SNAPSHOTS)
+    .sort((a, b) => avg(b) - avg(a))
     .slice(0, 10);
 
-  const top10Ids = new Set(top10.map((s) => s.channelId));
+  const top10Ids = top10.map((s) => s.channelId);
 
+  // 이름·이미지는 기간 내 가장 최근 기록에서 가져옴
+  const latest = await prisma.streamerDailySummary.findMany({
+    where: { channelId: { in: top10Ids }, date: { gte: from } },
+    orderBy: { date: "desc" },
+    distinct: ["channelId"],
+    select: { channelId: true, channelName: true, channelImageUrl: true },
+  });
+  const infoMap = new Map(latest.map((l) => [l.channelId, l]));
+
+  const top10IdSet = new Set(top10Ids);
   const gameMap = new Map<string, { game: string; viewers: number }[]>();
   for (const row of allGameRows) {
-    if (!top10Ids.has(row.channelId)) continue;
+    if (!top10IdSet.has(row.channelId)) continue;
     const list = gameMap.get(row.channelId) ?? [];
     list.push({
       game: row.liveCategoryValue,
@@ -626,8 +626,8 @@ export async function get3DaysTopStreamers() {
 
   return top10.map((s) => ({
     channelId: s.channelId,
-    channelName: s.channelName,
-    channelImageUrl: s.channelImageUrl ?? null,
+    channelName: infoMap.get(s.channelId)?.channelName ?? "",
+    channelImageUrl: infoMap.get(s.channelId)?.channelImageUrl ?? null,
     totalViewers: s._sum.totalViewers ?? 0,
     maxViewers: s._max.maxViewers ?? 0,
     broadcastCount: s._sum.broadcastCount ?? 0,
