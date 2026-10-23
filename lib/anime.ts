@@ -47,7 +47,7 @@ export const OFFICIAL_ANIME: OfficialAnime[] = [
     thumbnail: "/anime/olympus.webp",
   },
   {
-    id: "evangelion",
+    id: "ekindaichi_2",
     title: "신세기 에반게리온",
     aliases: [
       "에반게리온",
@@ -62,6 +62,14 @@ export const OFFICIAL_ANIME: OfficialAnime[] = [
     startDate: "2026-09-24",
     endDate: "2026-10-23",
     thumbnail: "/anime/evangelion.webp",
+  },
+  {
+    id: "kindaichi_2",
+    title: "소년탐정 김전일 2기",
+    aliases: ["김전일", "소년탐정", "소년탐전"],
+    startDate: "2026-10-16",
+    endDate: "2026-11-07",
+    thumbnail: "/anime/kim2.jpg",
   },
 ];
 
