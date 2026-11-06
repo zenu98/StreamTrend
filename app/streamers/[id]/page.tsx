@@ -16,6 +16,8 @@ import { StreamerCurrentStats } from "@/components/streamer/StreamerCurrentStats
 import { StreamerMainGame } from "@/components/streamer/StreamerMainGame";
 import { BroadcastCalendar } from "@/components/streamer/BroadcastCalendar";
 import { StreamerGameCalendar } from "@/components/streamer/StreamerGameCalendar";
+import { getStreamerChatStats } from "@/lib/chatStats";
+import { StreamerChatStats } from "@/components/streamer/StreamerChatStats";
 
 export async function generateMetadata({
   params,
@@ -56,12 +58,14 @@ async function StreamerDetail({
     topRecordsData,
     trendRows,
     liveTrendPoints,
+    chatStats,
   ] = await Promise.all([
     getStreamerStats(id),
     getStreamerAllStats(id),
     getStreamerTopRecords(id),
     getStreamerTrend(id),
     getStreamerLiveTrend(id),
+    getStreamerChatStats(id),
   ]);
 
   return (
@@ -103,10 +107,16 @@ async function StreamerDetail({
           weeklyAvgViewers={weeklyAvgViewers}
         />
       </section>
-
+      {/* 다시보기 채팅 활발도 */}
+      {chatStats.videos.length > 0 && (
+        <section className="space-y-4">
+          <StreamerChatStats {...chatStats} />
+        </section>
+      )}
       <section className="space-y-4">
         <StreamerMainGame rows={allRows} />
       </section>
+
       <section className="space-y-4">
         <StreamerTrendChart
           trendRows={trendRows}

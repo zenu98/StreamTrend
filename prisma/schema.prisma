@@ -90,3 +90,19 @@ model Streamer {
 
   @@index([channelName])
 }
+
+model VideoChatStat {
+  id            Int      @id @default(autoincrement())
+  videoId       String   @unique
+  videoNo       Int?
+  channelId     String
+  channelName   String
+  videoTitle    String
+  thumbnailUrl  String?
+  publishDate   DateTime
+  durationSec   Int
+  avgChatPerMin Int
+  sampledAt     DateTime @default(now())
+
+  @@index([channelId, publishDate])
+}

@@ -9,6 +9,7 @@
       "schedule": "0 21 * * *"
     },
     { "path": "/api/update-thumbnails", "schedule": "0 21 * * *" },
-    { "path": "/api/update-streamers", "schedule": "15 21 * * *" }
+    { "path": "/api/update-streamers", "schedule": "15 21 * * *" },
+    { "path": "/api/chat", "schedule": "7 22-23,0-2 * * *" }
   ]
 }
