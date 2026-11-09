@@ -81,12 +81,14 @@ model Category {
 }
 
 model Streamer {
-  channelId       String   @id
-  channelName     String
-  channelImageUrl String?
-  updatedAt       DateTime @updatedAt
-  followerCount   Int      @default(0)
-  verifiedMark    Boolean  @default(false)
+  channelId        String   @id
+  channelName      String
+  channelImageUrl  String?
+  updatedAt        DateTime @updatedAt
+  followerCount    Int      @default(0)
+  verifiedMark     Boolean  @default(false)
+  verifiedMarkType String?
+  officialChannel  Boolean  @default(false)
 
   @@index([channelName])
 }

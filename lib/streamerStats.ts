@@ -482,6 +482,7 @@ export type StreamerRankingEntry = {
   channelImageUrl: string | null;
   followerCount: number;
   verifiedMark: boolean;
+  verifiedMarkType: string | null;
   avgViewers: number;
   maxViewers: number;
   topGames: string[];
@@ -509,13 +510,14 @@ export async function getStreamerRanking(
         s."channelImageUrl",
         s."followerCount",
         s."verifiedMark",
+        s."verifiedMarkType",
         COALESCE(ROUND(AVG(d."avgViewers")), 0)::int AS "avgViewers",
         COALESCE(MAX(d."maxViewers"), 0)::int AS "maxViewers"
       FROM "Streamer" s
       JOIN "StreamerDailySummary" d ON s."channelId" = d."channelId"
       WHERE d."date" >= ${from} AND d."date" < ${to}
         AND (${excludeIds.length} = 0 OR s."channelId" <> ALL(${excludeIds}::text[]))
-      GROUP BY s."channelId", s."channelName", s."channelImageUrl", s."followerCount", s."verifiedMark"
+      GROUP BY s."channelId", s."channelName", s."channelImageUrl", s."followerCount", s."verifiedMark", s."verifiedMarkType"
       ORDER BY "avgViewers" DESC
       LIMIT ${RANKING_TOP_N}
     ),
@@ -545,7 +547,7 @@ export async function getStreamerRanking(
     LEFT JOIN games g
       ON g."channelId" = r."channelId" AND g.rn <= ${TOP_GAMES_PER_STREAMER}
     GROUP BY r."channelId", r."channelName", r."channelImageUrl",
-             r."followerCount", r."verifiedMark", r."avgViewers", r."maxViewers"
+             r."followerCount", r."verifiedMark", r."verifiedMarkType", r."avgViewers", r."maxViewers"
     ORDER BY r."avgViewers" DESC
   `;
 

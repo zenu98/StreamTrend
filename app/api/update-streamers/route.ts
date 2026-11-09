@@ -33,6 +33,8 @@ async function processBatch(ids: string[]) {
           data: {
             followerCount: ch.followerCount ?? 0,
             verifiedMark: ch.verifiedMark ?? false,
+            verifiedMarkType: ch.verifiedMarkType ?? null,
+            officialChannel: ch.officialChannel ?? false,
           },
         });
         updated++;

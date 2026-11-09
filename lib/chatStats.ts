@@ -2,12 +2,16 @@ import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
 import { toSummaryDateRange } from "@/lib/utils";
 import { BROADCAST_CHANNEL_IDS } from "@/lib/data/channel";
+
+/* ───────────── 치지직 내부 API 요청 ───────────── */
+
 const CHZZK_API = "https://api.chzzk.naver.com/service/v1";
 const CHZZK_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   Referer: "https://chzzk.naver.com/",
 };
+
 export class ChzzkBlockedError extends Error {}
 
 let consecutiveFailures = 0;
@@ -17,6 +21,7 @@ export function resetChzzkFailures() {
   consecutiveFailures = 0;
 }
 
+// 차단 징후(연결 끊김, 403/429/5xx, JSON 아닌 응답)를 감지하고, 연속 실패 시 중단
 async function chzzkFetch(url: string): Promise<Response> {
   if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
     throw new ChzzkBlockedError("연속 실패로 수집 중단");
@@ -51,6 +56,9 @@ async function chzzkFetch(url: string): Promise<Response> {
   consecutiveFailures = 0; // 정상 응답이면 리셋
   return res;
 }
+
+/* ───────────── 수집 ───────────── */
+
 const SAMPLE_POINTS = 8;
 const CHAT_PAGE_SIZE = 50;
 const DELAY_MS = 1000;
@@ -62,7 +70,7 @@ type Replay = {
   videoNo: number;
   videoTitle: string;
   thumbnailUrl: string | null;
-  publishDate: string;
+  publishDate: string; // "2026-10-21 14:15:51" (KST)
   durationSec: number;
 };
 
@@ -79,24 +87,10 @@ async function getRecentReplays(
 
   const list = (await res.json()).content?.data ?? [];
 
-  // 임시: videoId 없는 영상 확인용
-  for (const v of list) {
-    if (!v.videoId) {
-      console.log("[null videoId]", {
-        videoNo: v.videoNo,
-        title: v.videoTitle,
-        videoType: v.videoType,
-        adult: v.adult,
-        publishDate: v.publishDate,
-        keys: Object.keys(v),
-      });
-    }
-  }
-
   return list
     .filter(
       (v: any) =>
-        v.videoId &&
+        v.videoId && // 비로그인으로 볼 수 없는 제한 영상은 videoId가 null
         v.videoNo &&
         v.videoType === "REPLAY" &&
         v.commentActive &&
@@ -112,7 +106,7 @@ async function getRecentReplays(
     }));
 }
 
-// 한 지점의 채팅 속도 (초당 개수)
+// 한 지점의 채팅 속도 (초당 개수). 그 시점 직전 채팅 CHAT_PAGE_SIZE개의 시간 간격으로 계산
 async function getPointSpeed(
   videoNo: number,
   playerMessageTime: number,
@@ -120,9 +114,9 @@ async function getPointSpeed(
   const url =
     `${CHZZK_API}/videos/${videoNo}/chats` +
     `?playerMessageTime=${playerMessageTime}&previousVideoChatSize=${CHAT_PAGE_SIZE}`;
-  //   const res = await fetch(url, { cache: "no-store", headers: CHZZK_HEADERS });
   const res = await chzzkFetch(url);
   if (!res.ok) return null;
+
   const chats: { playerMessageTime?: number; messageTime?: number }[] =
     (await res.json()).content?.previousVideoChats ?? [];
   if (chats.length < 2) return 0;
@@ -137,8 +131,7 @@ async function getPointSpeed(
   return spanSec > 0 ? times.length / spanSec : 0;
 }
 
-// 영상 평균 분당 채팅 수
-// 영상의 대표 분당 채팅 수 (8개 지점 속도의 중앙값)
+// 영상의 대표 분당 채팅 수 (영상을 9등분한 경계 8곳의 속도 중앙값)
 async function getAvgChatPerMin(
   videoNo: number,
   durationSec: number,
@@ -199,7 +192,8 @@ export async function collectOneReplay(
   return true;
 }
 
-// 상세 페이지용: 한 스트리머의 채팅 지표 조회
+/* ───────────── 상세 페이지 조회 ───────────── */
+
 export type StreamerChatVideo = {
   videoId: string;
   videoNo: number | null;
@@ -212,33 +206,72 @@ export type StreamerChatVideo = {
 
 export type StreamerChatStats = {
   videos: StreamerChatVideo[];
-  recentAvg: number; // 최근 RECENT_AVG_COUNT개 영상의 평균
+  recentAvg: number; // 최근 RECENT_AVG_COUNT개 다시보기 평균
   recentCount: number;
+  rank: number | null; // 현재 시청자 TOP 50 안에서의 채팅 활발도 순위
+  total: number; // 순위가 매겨진 인원 (데이터 있는 TOP 50 인원)
+  poolSize: number;
 };
 
 const RECENT_AVG_COUNT = 10;
+export const COLLECT_POOL_SIZE = 100;
 
-// 상세 페이지용: 한 스트리머의 다시보기별 분당 채팅
+// 현재 시청자 TOP 50 안에서 채팅 활발도 순위 (상세 페이지들이 공유하는 캐시)
+async function getChatRankings(): Promise<
+  { channelId: string; rank: number; total: number }[]
+> {
+  "use cache";
+  cacheLife("statsTime");
+
+  const top = await getTopStreamers(COLLECT_POOL_SIZE);
+  const ids = top.map((s) => s.channelId);
+  if (ids.length === 0) return [];
+
+  return prisma.$queryRaw`
+    WITH recent AS (
+      SELECT "channelId", "avgChatPerMin",
+             ROW_NUMBER() OVER (PARTITION BY "channelId" ORDER BY "publishDate" DESC) AS rn
+      FROM "VideoChatStat"
+      WHERE "avgChatPerMin" > 0
+        AND "channelId" = ANY(${ids}::text[])
+    ),
+    per AS (
+      SELECT "channelId", AVG("avgChatPerMin") AS avg
+      FROM recent
+      WHERE rn <= ${RECENT_AVG_COUNT}
+      GROUP BY "channelId"
+    )
+    SELECT "channelId",
+           RANK() OVER (ORDER BY avg DESC)::int AS "rank",
+           COUNT(*) OVER ()::int AS "total"
+    FROM per
+  `;
+}
+
+// 상세 페이지용: 한 스트리머의 다시보기별 채팅 활발도
 export async function getStreamerChatStats(
   channelId: string,
 ): Promise<StreamerChatStats> {
   "use cache";
   cacheLife("statsTime");
 
-  const rows = await prisma.videoChatStat.findMany({
-    where: { channelId, avgChatPerMin: { gt: 0 } },
-    orderBy: { publishDate: "desc" },
-    take: 30,
-    select: {
-      videoId: true,
-      videoNo: true,
-      videoTitle: true,
-      thumbnailUrl: true,
-      publishDate: true,
-      durationSec: true,
-      avgChatPerMin: true,
-    },
-  });
+  const [rows, rankings] = await Promise.all([
+    prisma.videoChatStat.findMany({
+      where: { channelId, avgChatPerMin: { gt: 0 } },
+      orderBy: { publishDate: "desc" },
+      take: 30,
+      select: {
+        videoId: true,
+        videoNo: true,
+        videoTitle: true,
+        thumbnailUrl: true,
+        publishDate: true,
+        durationSec: true,
+        avgChatPerMin: true,
+      },
+    }),
+    getChatRankings(),
+  ]);
 
   const videos = rows.map((r) => ({
     videoId: r.videoId,
@@ -255,10 +288,21 @@ export async function getStreamerChatStats(
     ? Math.round(recent.reduce((s, v) => s + v.chatPerMin, 0) / recent.length)
     : 0;
 
-  return { videos, recentAvg, recentCount: recent.length };
+  const me = rankings.find((r) => r.channelId === channelId);
+
+  return {
+    videos,
+    recentAvg,
+    recentCount: recent.length,
+    rank: me?.rank ?? null,
+    total: rankings[0]?.total ?? 0,
+    poolSize: COLLECT_POOL_SIZE,
+  };
 }
 
-// 최근 7일 평균 시청자 상위 N명의 channelId, channelName
+/* ───────────── 공통 ───────────── */
+
+// 최근 7일 평균 시청자 상위 N명 (공식 채널 제외)
 export async function getTopStreamers(
   limit = 50,
 ): Promise<{ channelId: string; channelName: string }[]> {

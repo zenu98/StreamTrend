@@ -1,4 +1,5 @@
 "use client";
+import { BROADCAST_CHANNEL_IDS } from "@/lib/data/channel";
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
@@ -13,7 +14,28 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "maxViewers", label: "최고 시청자" },
   { key: "followerCount", label: "팔로워" },
 ];
+const MARK_BASE = "https://ssl.pstatic.net/static/nng/glive/image";
+const BROADCAST_SET = new Set<string>(BROADCAST_CHANNEL_IDS);
 
+function getMark(s: {
+  channelId: string;
+  verifiedMark: boolean;
+  verifiedMarkType: string | null;
+}) {
+  if (BROADCAST_SET.has(s.channelId))
+    return {
+      src: `${MARK_BASE}/icon_official_mark.png`,
+      alt: "공식 인증 마크",
+    };
+  if (s.verifiedMarkType === "PARTNER")
+    return { src: `${MARK_BASE}/icon_partner_mark.png`, alt: "파트너" };
+  if (s.verifiedMarkType === "CHALLENGER")
+    return { src: `${MARK_BASE}/icon_challenger_mark.png`, alt: "챌린저" };
+  // 타입이 아직 안 채워진 채널은 일단 파트너로 표시
+  if (s.verifiedMark)
+    return { src: `${MARK_BASE}/icon_partner_mark.png`, alt: "인증 마크" };
+  return null;
+}
 export function StreamerRankingList({
   streamers,
 }: {
@@ -178,15 +200,18 @@ function StreamerRankingRow({
             <p className="truncate text-sm font-medium text-white">
               {streamer.channelName}
             </p>
-            {streamer.verifiedMark && (
-              <Image
-                src="https://ssl.pstatic.net/static/nng/glive/image/icon_official_mark.png"
-                alt="파트너"
-                width={13}
-                height={13}
-                className="shrink-0"
-              />
-            )}
+            {(() => {
+              const mark = getMark(streamer);
+              return mark ? (
+                <Image
+                  src={mark.src}
+                  alt={mark.alt}
+                  width={13}
+                  height={13}
+                  className="shrink-0"
+                />
+              ) : null;
+            })()}
           </div>
           {streamer.topGames.length > 0 && (
             <p className="mt-0.5 truncate text-xs text-white/40">

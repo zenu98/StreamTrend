@@ -28,14 +28,14 @@ type Props = {
   topLiveStreamers?: TopLiveStreamer[];
 };
 
-const tierColors: Record<string, string> = {
+export const tierColors: Record<string, string> = {
   S: "text-fuchsia-300 bg-fuchsia-400/10",
   A: "text-orange-300 bg-orange-400/10",
   B: "text-sky-300 bg-sky-400/10",
   C: "text-slate-300 bg-slate-400/10",
 };
 
-const tierGradients: Record<string, string> = {
+export const tierGradients: Record<string, string> = {
   S: "linear-gradient(90deg, #A855F7, #EC4899)",
   A: "linear-gradient(90deg, #F97316, #EF4444)",
   B: "linear-gradient(90deg, #3B82F6, #06B6D4)",
@@ -43,7 +43,7 @@ const tierGradients: Record<string, string> = {
   default: "linear-gradient(90deg, #6366F1, #8B5CF6)",
 };
 
-function TierBadge({ tier }: { tier?: string }) {
+export function TierBadge({ tier }: { tier?: string }) {
   if (!tier) return null;
   return (
     <span
@@ -56,7 +56,13 @@ function TierBadge({ tier }: { tier?: string }) {
   );
 }
 
-function GradientNumber({ value, tier }: { value: string; tier?: string }) {
+export function GradientNumber({
+  value,
+  tier,
+}: {
+  value: string;
+  tier?: string;
+}) {
   return (
     <span
       className="bg-clip-text text-transparent"

@@ -5,6 +5,7 @@ import {
   getTopStreamers,
   resetChzzkFailures,
   ChzzkBlockedError,
+  COLLECT_POOL_SIZE,
 } from "@/lib/chatStats";
 
 export const maxDuration = 300;
@@ -23,7 +24,10 @@ export async function GET(request: NextRequest) {
 
   const params = request.nextUrl.searchParams;
   const limitParam = Number(params.get("limit"));
-  const limit = Number.isFinite(limitParam) && limitParam > 0 ? limitParam : 50;
+  const limit =
+    Number.isFinite(limitParam) && limitParam > 0
+      ? limitParam
+      : COLLECT_POOL_SIZE;
   const offset = Math.max(0, Number(params.get("offset")) || 0);
   const force = params.get("force") === "1";
 
