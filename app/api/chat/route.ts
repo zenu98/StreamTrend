@@ -7,7 +7,7 @@ import {
   ChzzkBlockedError,
   COLLECT_POOL_SIZE,
 } from "@/lib/chatStats";
-
+import { revalidateTag } from "next/cache";
 export const maxDuration = 300;
 
 const SKIP_WITHIN_MS = 20 * 60 * 60 * 1000; // 20시간 내 수집했으면 skip
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       });
     }
   }
-
+  if (collected > 0) revalidateTag("ranking", "dailySummary");
   return Response.json({
     collected,
     attempted,

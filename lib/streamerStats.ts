@@ -486,6 +486,8 @@ export type StreamerRankingEntry = {
   avgViewers: number;
   maxViewers: number;
   topGames: string[];
+  chatPerMin: number | null; // 그 주 다시보기들의 분당 채팅 평균 (수집 없으면 null)
+  chatVideoCount: number; // 그 주에 수집된 다시보기 수
 };
 
 const RANKING_TOP_N = 100;
@@ -501,6 +503,12 @@ export async function getStreamerRanking(
   cacheTag("ranking");
 
   const excludeIds = excludeBroadcastChannels ? [...BROADCAST_CHANNEL_IDS] : [];
+
+  // from/to는 요약 테이블용(영업일 00:00 기준)이라 6시간 당겨져 있음.
+  // publishDate는 실제 시각이므로 06:00 경계로 되돌려서 비교
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  const chatFrom = new Date(from.getTime() + SIX_HOURS);
+  const chatTo = new Date(to.getTime() + SIX_HOURS);
 
   const rows = await prisma.$queryRaw<StreamerRankingEntry[]>`
     WITH ranked AS (
@@ -535,9 +543,23 @@ export async function getStreamerRanking(
         AND d."date" >= ${from} AND d."date" < ${to}
         AND d."liveCategoryValue" <> ''
       GROUP BY d."channelId", d."liveCategory"
+    ),
+    chat AS (
+      -- 상위 100명 중, 그 주에 올라온 다시보기의 분당 채팅 평균
+      SELECT
+        "channelId",
+        ROUND(AVG("avgChatPerMin"))::int AS "chatPerMin",
+        COUNT(*)::int AS "chatVideoCount"
+      FROM "VideoChatStat"
+      WHERE "channelId" IN (SELECT "channelId" FROM ranked)
+        AND "avgChatPerMin" > 0
+        AND "publishDate" >= ${chatFrom} AND "publishDate" < ${chatTo}
+      GROUP BY "channelId"
     )
     SELECT
       r.*,
+      c."chatPerMin",
+      COALESCE(c."chatVideoCount", 0)::int AS "chatVideoCount",
       COALESCE(
         ARRAY_AGG(g."category" ORDER BY g.rn)
           FILTER (WHERE g."category" IS NOT NULL),
@@ -546,8 +568,11 @@ export async function getStreamerRanking(
     FROM ranked r
     LEFT JOIN games g
       ON g."channelId" = r."channelId" AND g.rn <= ${TOP_GAMES_PER_STREAMER}
+    LEFT JOIN chat c
+      ON c."channelId" = r."channelId"
     GROUP BY r."channelId", r."channelName", r."channelImageUrl",
-             r."followerCount", r."verifiedMark", r."verifiedMarkType", r."avgViewers", r."maxViewers"
+             r."followerCount", r."verifiedMark", r."verifiedMarkType", r."avgViewers", r."maxViewers",
+             c."chatPerMin", c."chatVideoCount"
     ORDER BY r."avgViewers" DESC
   `;
 

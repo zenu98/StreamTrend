@@ -7,12 +7,13 @@ import Link from "next/link";
 import { Search, X } from "lucide-react";
 import { formatCount } from "./StreamersClient";
 import { StreamerRankingEntry } from "@/lib/streamerStats";
-type SortKey = "avgViewers" | "maxViewers" | "followerCount";
+type SortKey = "avgViewers" | "maxViewers" | "followerCount" | "chatPerMin";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "avgViewers", label: "평균 시청자" },
   { key: "maxViewers", label: "최고 시청자" },
   { key: "followerCount", label: "팔로워" },
+  { key: "chatPerMin", label: "채팅 활발도" },
 ];
 const MARK_BASE = "https://ssl.pstatic.net/static/nng/glive/image";
 const BROADCAST_SET = new Set<string>(BROADCAST_CHANNEL_IDS);
@@ -51,8 +52,18 @@ export function StreamerRankingList({
   }, [streamers, query]);
 
   const sorted = useMemo(
-    () => [...streamers].sort((a, b) => b[sortKey] - a[sortKey]),
+    () =>
+      [...streamers].sort((a, b) => {
+        const av = a[sortKey] ?? -1;
+        const bv = b[sortKey] ?? -1;
+        return bv - av;
+      }),
     [streamers, sortKey],
+  );
+
+  const chatDataCount = useMemo(
+    () => streamers.filter((s) => s.chatPerMin !== null).length,
+    [streamers],
   );
 
   return (
@@ -93,7 +104,9 @@ export function StreamerRankingList({
                   key={`search-${s.channelId}`}
                   streamer={s}
                   rank={
-                    sorted.findIndex((x) => x.channelId === s.channelId) + 1
+                    sortKey === "chatPerMin" && s.chatPerMin === null
+                      ? null
+                      : sorted.findIndex((x) => x.channelId === s.channelId) + 1
                   }
                   sortKey={sortKey}
                 />
@@ -118,13 +131,21 @@ export function StreamerRankingList({
           </button>
         ))}
       </div>
-
+      {sortKey === "chatPerMin" && (
+        <p className="text-xs text-white/40">
+          {chatDataCount === 0
+            ? "이 주차에는 수집된 채팅 데이터가 없어요. 채팅 는 2026년 11월 6일부터 수집하고 있어요."
+            : `이 주에 올라온 다시보기의 분당 채팅(표본 추정치) 평균이에요. 데이터가 있는 ${chatDataCount}명만 순위를 매기고, 나머지는 아래에 표시돼요.`}
+        </p>
+      )}
       <div className="flex flex-col gap-2">
         {sorted.map((s, i) => (
           <StreamerRankingRow
             key={s.channelId}
             streamer={s}
-            rank={i + 1}
+            rank={
+              sortKey === "chatPerMin" && s.chatPerMin === null ? null : i + 1
+            }
             sortKey={sortKey}
           />
         ))}
@@ -140,7 +161,7 @@ function Stat({
   formatter,
 }: {
   label: string;
-  value: number;
+  value: number | null;
   active: boolean;
   formatter?: (n: number) => string;
 }) {
@@ -156,7 +177,11 @@ function Stat({
       <p
         className={`text-sm tabular-nums ${active ? "font-semibold text-white" : "text-white/70"}`}
       >
-        {formatter ? formatter(value) : value.toLocaleString()}
+        {value === null
+          ? "-"
+          : formatter
+            ? formatter(value)
+            : value.toLocaleString()}
       </p>
     </div>
   );
@@ -168,7 +193,7 @@ function StreamerRankingRow({
   sortKey,
 }: {
   streamer: StreamerRankingEntry;
-  rank: number;
+  rank: number | null;
   sortKey: SortKey;
 }) {
   return (
@@ -177,7 +202,9 @@ function StreamerRankingRow({
         href={`/streamers/${streamer.channelId}`}
         className="flex min-w-0 flex-1 items-center gap-4 px-4 py-2.5"
       >
-        <span className="w-5 shrink-0 text-sm text-white/40">{rank}</span>
+        <span className="w-5 shrink-0 text-sm text-white/40">
+          {rank ?? "-"}
+        </span>
 
         <div className="relative h-10.5 w-10.5 shrink-0 overflow-hidden rounded-full bg-white/10">
           {streamer.channelImageUrl ? (
@@ -236,6 +263,11 @@ function StreamerRankingRow({
             value={streamer.followerCount}
             active={sortKey === "followerCount"}
             formatter={formatCount}
+          />
+          <Stat
+            label="채팅활성도"
+            value={streamer.chatPerMin}
+            active={sortKey === "chatPerMin"}
           />
         </div>
       </Link>

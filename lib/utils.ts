@@ -187,3 +187,29 @@ export function toSummaryDateRange(from: Date, to: Date) {
     to: new Date(to.getTime() - SUMMARY_DATE_OFFSET_MS),
   };
 }
+// 어떤 시각이 속한 "랭킹 기준 주차" (06:00 영업일, 월요일 시작, 목요일이 속한 달)
+export function getBusinessWeekInfo(date: Date): {
+  key: string; // "2026-11-3" (정렬·그룹용)
+  label: string; // "11월 3주차"
+  range: string; // "11.17 ~ 11.23"
+} {
+  const biz = getKSTBusinessDate(date);
+  biz.setUTCHours(0, 0, 0, 0);
+
+  const monday = getMondayOf(biz);
+  const { year, month } = getWeekOwnerMonth(monday);
+
+  const thursday = new Date(monday);
+  thursday.setUTCDate(thursday.getUTCDate() + 3);
+  const weekNo = Math.ceil(thursday.getUTCDate() / 7);
+
+  const sunday = new Date(monday);
+  sunday.setUTCDate(sunday.getUTCDate() + 6);
+  const md = (d: Date) => `${d.getUTCMonth() + 1}.${d.getUTCDate()}`;
+
+  return {
+    key: `${year}-${month}-${weekNo}`,
+    label: `${month}월 ${weekNo}주차`,
+    range: `${md(monday)} ~ ${md(sunday)}`,
+  };
+}

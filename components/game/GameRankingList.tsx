@@ -16,7 +16,7 @@ type GameRankingEntry = {
   peakViewers: number;
   totalScore: number;
 };
-
+export type PinnedGame = { categoryId: string; category: string };
 type SortKey =
   | "avgViewers"
   | "broadcastCount"
@@ -32,10 +32,26 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "broadcastCount", label: "방송 수" },
 ];
 
-export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
+export function GameRankingList({
+  games,
+  pinned,
+  onTogglePin,
+  onlyPinned,
+  onOnlyPinnedChange,
+}: {
+  games: GameRankingEntry[];
+  pinned: PinnedGame[];
+  onTogglePin: (game: PinnedGame) => void;
+  onlyPinned: boolean;
+  onOnlyPinnedChange: (v: boolean) => void;
+}) {
   const [sortKey, setSortKey] = useState<SortKey>("totalScore");
   const [query, setQuery] = useState("");
-  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+
+  const pinnedIdSet = useMemo(
+    () => new Set(pinned.map((p) => p.categoryId)),
+    [pinned],
+  );
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -47,21 +63,38 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
     () => [...games].sort((a, b) => b[sortKey] - a[sortKey]),
     [games, sortKey],
   );
+
+  // 전체 순위 (현재 정렬 기준)
+  const rankOf = useMemo(() => {
+    const map = new Map<string, number>();
+    sorted.forEach((g, i) => map.set(g.categoryId, i + 1));
+    return map;
+  }, [sorted]);
+
+  // 고정 상자: 고정한 순서대로
   const pinnedGames = useMemo(
     () =>
-      pinnedIds
-        .map((id) => sorted.find((g) => g.categoryId === id))
+      pinned
+        .map((p) => sorted.find((g) => g.categoryId === p.categoryId))
         .filter((g): g is GameRankingEntry => g != null),
-    [pinnedIds, sorted],
+    [pinned, sorted],
   );
-  function togglePin(categoryId: string) {
-    setPinnedIds(
-      (prev) =>
-        prev.includes(categoryId)
-          ? prev.filter((id) => id !== categoryId) // 이미 고정됐으면 해제
-          : [categoryId, ...prev], // 새 고정은 맨 앞(최상단)에 추가
-    );
-  }
+
+  // 이번 주차 목록에 없는 고정 게임
+  const missingPinned = useMemo(
+    () => pinned.filter((p) => !rankOf.has(p.categoryId)),
+    [pinned, rankOf],
+  );
+
+  // 메인 목록: "고정한 게임만 보기"면 고정 게임만, 순위는 전체 기준
+  const mainList = useMemo(
+    () =>
+      onlyPinned ? sorted.filter((g) => pinnedIdSet.has(g.categoryId)) : sorted,
+    [onlyPinned, sorted, pinnedIdSet],
+  );
+
+  const pin = (g: GameRankingEntry) =>
+    onTogglePin({ categoryId: g.categoryId, category: g.category });
 
   return (
     <div className="space-y-4">
@@ -85,22 +118,31 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
         )}
       </div>
 
-      {pinnedGames.length > 0 && (
+      {/* 고정 상자 (골라보기 모드가 아닐 때) */}
+      {!onlyPinned && pinned.length > 0 && (
         <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.02] p-3">
-          <p className="px-1 text-xs text-white/40">
-            고정된 게임 {pinnedGames.length}개
-          </p>
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-white/40">
+              고정된 게임 {pinned.length}개
+            </p>
+            {pinned.length >= 2 && (
+              <button
+                onClick={() => onOnlyPinnedChange(true)}
+                className="rounded-full border border-white/20 px-2.5 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/10"
+              >
+                이 게임들만 보기
+              </button>
+            )}
+          </div>
           <div className="flex flex-col gap-2">
             {pinnedGames.map((game) => (
               <GameRankingRow
                 key={`pinned-${game.categoryId}`}
                 game={game}
-                rank={
-                  sorted.findIndex((g) => g.categoryId === game.categoryId) + 1
-                }
+                rank={rankOf.get(game.categoryId) ?? 0}
                 sortKey={sortKey}
                 isPinned
-                onTogglePin={() => togglePin(game.categoryId)}
+                onTogglePin={() => pin(game)}
               />
             ))}
           </div>
@@ -114,8 +156,7 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
           </p>
           {searchResults.length === 0 ? (
             <p className="py-6 text-center text-sm text-white/40">
-              {`해당하는 게임이 ${games.length}위 안에 없어요. 더보기를 눌러 리스트를 더
-              불러와보세요.`}
+              {`해당하는 게임이 ${games.length}위 안에 없어요. 더보기를 눌러 리스트를 더 불러와보세요.`}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -123,13 +164,10 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
                 <GameRankingRow
                   key={`search-${game.categoryId}`}
                   game={game}
-                  rank={
-                    sorted.findIndex((g) => g.categoryId === game.categoryId) +
-                    1
-                  }
+                  rank={rankOf.get(game.categoryId) ?? 0}
                   sortKey={sortKey}
-                  isPinned={pinnedIds.includes(game.categoryId)}
-                  onTogglePin={() => togglePin(game.categoryId)}
+                  isPinned={pinnedIdSet.has(game.categoryId)}
+                  onTogglePin={() => pin(game)}
                 />
               ))}
             </div>
@@ -137,7 +175,7 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         {SORT_OPTIONS.map((opt) => (
           <button
             key={opt.key}
@@ -153,18 +191,45 @@ export function GameRankingList({ games }: { games: GameRankingEntry[] }) {
         ))}
       </div>
 
+      {/* 골라보기 모드 안내 바 */}
+      {onlyPinned && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5">
+          <p className="text-sm text-white/80">
+            선택한 게임 <b className="text-white">{pinned.length}개</b>만 보는
+            중
+            <span className="ml-1 text-xs text-white/40">
+              · 순위는 전체 기준
+            </span>
+          </p>
+          <button
+            onClick={() => onOnlyPinnedChange(false)}
+            className="text-xs font-medium text-white/60 underline-offset-2 hover:text-white hover:underline"
+          >
+            전체 순위 보기
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
-        {sorted.map((game, i) => (
+        {mainList.map((game) => (
           <GameRankingRow
             key={game.categoryId}
             game={game}
-            rank={i + 1}
+            rank={rankOf.get(game.categoryId) ?? 0}
             sortKey={sortKey}
-            isPinned={pinnedIds.includes(game.categoryId)}
-            onTogglePin={() => togglePin(game.categoryId)}
+            isPinned={pinnedIdSet.has(game.categoryId)}
+            onTogglePin={() => pin(game)}
           />
         ))}
       </div>
+
+      {/* 선택했지만 이번 주차 순위권(불러온 범위) 밖인 게임 */}
+      {onlyPinned && missingPinned.length > 0 && (
+        <p className="px-1 text-xs text-white/40">
+          {missingPinned.map((p) => p.category).join(", ")}: 이 주차의{" "}
+          {games.length}위 안에 없어요
+        </p>
+      )}
     </div>
   );
 }
@@ -282,6 +347,22 @@ function GameRankingRow({
           />
         </div>
       </Link>
+      <button
+        type="button"
+        onClick={onTogglePin}
+        aria-pressed={isPinned}
+        aria-label={
+          isPinned ? `${game.category} 선택 해제` : `${game.category} 선택`
+        }
+        title={isPinned ? "선택 해제" : "비교할 게임으로 선택"}
+        className={`shrink-0 rounded-md p-2 transition-colors ${
+          isPinned
+            ? "text-white"
+            : "text-white/25 hover:bg-white/5 hover:text-white/70"
+        }`}
+      >
+        <Pin className={`h-4 w-4 ${isPinned ? "fill-current" : ""}`} />
+      </button>
     </div>
   );
 }

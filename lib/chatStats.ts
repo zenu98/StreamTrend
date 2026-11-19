@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { cacheLife } from "next/cache";
-import { toSummaryDateRange } from "@/lib/utils";
+import { toSummaryDateRange, getBusinessWeekInfo } from "@/lib/utils";
 import { BROADCAST_CHANNEL_IDS } from "@/lib/data/channel";
 
 /* ───────────── 치지직 내부 API 요청 ───────────── */
@@ -132,25 +132,63 @@ async function getPointSpeed(
 }
 
 // 영상의 대표 분당 채팅 수 (영상을 9등분한 경계 8곳의 속도 중앙값)
+const EDGE_MARGIN = 0.05; // 앞뒤 5%(대기 화면, 끝인사)는 샘플링하지 않음
+
+// videoNo로 시드를 고정한 난수 (같은 영상은 항상 같은 지점을 뽑음)
+function seededRandom(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 층화 무작위: 구간을 SAMPLE_POINTS칸으로 나누고 각 칸에서 무작위 위치 하나 (ms)
+function stratifiedSamplePoints(
+  videoNo: number,
+  durationSec: number,
+): number[] {
+  const rand = seededRandom(videoNo);
+  const start = durationSec * EDGE_MARGIN;
+  const span = durationSec * (1 - EDGE_MARGIN * 2);
+  const slot = span / SAMPLE_POINTS;
+
+  return Array.from({ length: SAMPLE_POINTS }, (_, i) =>
+    Math.floor((start + slot * (i + rand())) * 1000),
+  );
+}
+
+// 절사평균: 5개 이상이면 최대·최소를 하나씩 빼고 평균, 3~4개는 중앙값
+function robustCenter(values: number[]): number {
+  const v = [...values].sort((a, b) => a - b);
+  const n = v.length;
+  if (n === 0) return 0;
+  if (n >= 5) {
+    const trimmed = v.slice(1, -1);
+    return trimmed.reduce((s, x) => s + x, 0) / trimmed.length;
+  }
+  if (n >= 3) {
+    const mid = Math.floor(n / 2);
+    return n % 2 === 0 ? (v[mid - 1] + v[mid]) / 2 : v[mid];
+  }
+  return v.reduce((s, x) => s + x, 0) / n;
+}
+
+// 영상의 대표 분당 채팅 수 (층화 무작위 8지점 → 절사평균)
 async function getAvgChatPerMin(
   videoNo: number,
   durationSec: number,
 ): Promise<number> {
   const speeds: number[] = [];
-  for (let i = 1; i <= SAMPLE_POINTS; i++) {
-    const t = Math.floor((durationSec * 1000 * i) / (SAMPLE_POINTS + 1));
+  for (const t of stratifiedSamplePoints(videoNo, durationSec)) {
     const s = await getPointSpeed(videoNo, t);
     if (s !== null && s > 0) speeds.push(s);
     await sleep(DELAY_MS);
   }
-  if (speeds.length === 0) return 0;
-
-  speeds.sort((a, b) => a - b);
-  const mid = Math.floor(speeds.length / 2);
-  const medianPerSec =
-    speeds.length % 2 === 0 ? (speeds[mid - 1] + speeds[mid]) / 2 : speeds[mid];
-
-  return Math.round(medianPerSec * 60);
+  return Math.round(robustCenter(speeds) * 60);
 }
 
 // 스트리머 1명: 아직 집계 안 한 최신 다시보기 1개를 집계·저장
@@ -202,6 +240,9 @@ export type StreamerChatVideo = {
   publishDate: string; // ISO
   durationSec: number;
   chatPerMin: number;
+  weekKey: string;
+  weekLabel: string;
+  weekRange: string;
 };
 
 export type StreamerChatStats = {
@@ -273,15 +314,21 @@ export async function getStreamerChatStats(
     getChatRankings(),
   ]);
 
-  const videos = rows.map((r) => ({
-    videoId: r.videoId,
-    videoNo: r.videoNo,
-    videoTitle: r.videoTitle,
-    thumbnailUrl: r.thumbnailUrl,
-    publishDate: r.publishDate.toISOString(),
-    durationSec: r.durationSec,
-    chatPerMin: r.avgChatPerMin,
-  }));
+  const videos = rows.map((r) => {
+    const week = getBusinessWeekInfo(r.publishDate);
+    return {
+      videoId: r.videoId,
+      videoNo: r.videoNo,
+      videoTitle: r.videoTitle,
+      thumbnailUrl: r.thumbnailUrl,
+      publishDate: r.publishDate.toISOString(),
+      durationSec: r.durationSec,
+      chatPerMin: r.avgChatPerMin,
+      weekKey: week.key,
+      weekLabel: week.label,
+      weekRange: week.range,
+    };
+  });
 
   const recent = videos.slice(0, RECENT_AVG_COUNT);
   const recentAvg = recent.length

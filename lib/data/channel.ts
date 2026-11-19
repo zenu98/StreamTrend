@@ -24,4 +24,5 @@ export const BROADCAST_CHANNEL_IDS = new Set([
   "c395b33989e330bce7aca90f8abcadbf", // 치지직 배구 중계 B
   "146f5ae5e8b635c817fb963ceca080e1", // 치지직 농구 중계 A
   "53393ca8389d71a814631744a768681c", // 검은사막 공식
+  "e912088ee573f7f45d52540c720e6baa", // 네이버 스포츠 중계
 ]);
