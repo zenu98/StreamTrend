@@ -1,11 +1,15 @@
 import { getGameCategories } from "@/lib/games";
 import Image from "next/image";
 import Link from "next/link";
-import { Info } from "lucide-react";
-import { Suspense } from "react";
+import type { Metadata } from "next";
 import { GameSearch } from "@/components/game/GameSearch";
 import { Notice } from "@/components/shared/Notice";
 
+export const metadata: Metadata = {
+  title: "치지직 게임 카테고리",
+  description: "치지직의 게임 카테고리별 시청자와 방송 통계를 확인하세요.",
+  alternates: { canonical: "/games" },
+};
 export default function GamesPage() {
   return <GamesContent />;
 }

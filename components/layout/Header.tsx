@@ -60,12 +60,15 @@ export function Header() {
       >
         <Image
           src="/logo_square_accent.png"
-          alt="StreamTrend"
+          alt="스트림트렌드 StreamTrend"
           width={28}
           height={28}
           className="rounded-md"
         />
-        StreamTrend
+        <span>StreamTrend</span>
+        <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
+          스트림트렌드 · 치지직 지표
+        </span>
       </Link>
 
       {/* 데스크톱 */}

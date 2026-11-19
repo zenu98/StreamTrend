@@ -14,9 +14,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: BASE_URL, changeFrequency: "always", priority: 1 },
-    { url: `${BASE_URL}/games`, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE_URL}/streamers`, changeFrequency: "hourly", priority: 0.9 },
+    { url: BASE_URL, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE_URL}/streamers`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${BASE_URL}/games`, changeFrequency: "daily", priority: 0.9 },
+    {
+      url: `${BASE_URL}/games/ranking`,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    { url: `${BASE_URL}/race`, changeFrequency: "weekly", priority: 0.6 },
   ];
 
   const gamePages: MetadataRoute.Sitemap = categories.map((c) => ({

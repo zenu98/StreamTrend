@@ -3,7 +3,13 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getMonthWeekOptions, toSummaryDateRange } from "@/lib/utils";
 import { getStreamerRanking } from "@/lib/streamerStats";
 import { StreamersClient } from "@/components/streamer/StreamersClient";
-
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "치지직 스트리머 순위",
+  description:
+    "치지직 스트리머 주간 순위. 평균·최고 시청자, 팔로워, 채팅 활발도 지표로 비교해 보세요.",
+  alternates: { canonical: "/streamers" },
+};
 export default function StreamersPage() {
   return (
     <div className="p-4 md:p-8 space-y-4">
